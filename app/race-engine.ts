@@ -65,7 +65,7 @@ export const initial = (route: RouteId = 'hangang'): Snapshot => ({
   boost: false,
   loaded: false,
   error: '',
-  camera: 0,
+  camera: 1,
   route,
   length: getCourse(route).length,
   nearMisses: 0,
@@ -95,6 +95,34 @@ export class RaceEngine {
   state = initial();
   keys = new Set<string>();
   drive = newDrive();
+  peaceful = true;
+  cruise = true;
+  daylight = true;
+  configureExperience = (
+    daylight: boolean,
+    peaceful: boolean,
+    cruise: boolean,
+  ) => {
+    this.daylight = daylight;
+    this.peaceful = peaceful;
+    this.cruise = cruise;
+    const sky = daylight ? '#a2c9dc' : this.course.config.sky;
+    this.scene.background = new T.Color(sky);
+    this.scene.fog = new T.FogExp2(sky, daylight ? 0.0015 : 0.0032);
+    this.scene.environmentIntensity = daylight ? 0.4 : 0.42;
+    this.scene.children.forEach((o) => {
+      if (o instanceof T.HemisphereLight) {
+        o.color.set(daylight ? '#e9f4ff' : '#afcaff');
+        o.groundColor.set(daylight ? '#7a8e75' : '#273349');
+        o.intensity = daylight ? 1.5 : 1.1;
+      }
+      if (o instanceof T.DirectionalLight) {
+        o.color.set(daylight ? '#fff2d6' : '#b4ccff');
+        o.intensity = daylight ? 1.2 : 1;
+      }
+    });
+    this.world.setDaylight(daylight);
+  };
   steeringInput = 0;
   private furthest = 0;
   setTransmission = (mode: Transmission) => {
@@ -420,6 +448,7 @@ export class RaceEngine {
     this.scene.background = new T.Color(this.course.config.sky);
     this.scene.fog = new T.FogExp2(this.course.config.sky, 0.0032);
     this.state = { ...initial(route), loaded, error };
+    this.configureExperience(this.daylight, this.peaceful, this.cruise);
     this.x = 0;
     this.steer = 0;
     this.resetTraffic();
@@ -490,6 +519,10 @@ export class RaceEngine {
     this.camera.position.y += this.state.camera ? 1.3 : 2.2;
   }
   private keydown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      if (document.querySelector('dialog[open]')) return;
+      e.preventDefault();
+    }
     if (
       e.target instanceof HTMLElement &&
       ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)
@@ -539,11 +572,11 @@ export class RaceEngine {
     this.steeringInput = 0;
     this.onEnd({
       route: s.route,
-      completed: reason === 'finish',
+      completed: reason === 'finish' && !this.peaceful,
       distance: Math.max(s.distance, this.furthest),
       time: s.time,
-      passed: s.passed,
-      nearMisses: s.nearMisses,
+      passed: this.peaceful ? 0 : s.passed,
+      nearMisses: this.peaceful ? 0 : s.nearMisses,
       maxSpeed: s.maxSpeed,
       landmarks: [...s.landmarks],
     });
@@ -554,10 +587,17 @@ export class RaceEngine {
       k = this.keys;
     if (s.mode !== 'racing') return;
     s.time += dt;
-    const gas = k.has('w') || k.has('arrowup'),
+    const gas =
+        k.has('w') ||
+        k.has('arrowup') ||
+        (this.cruise &&
+          this.drive.selector === 'D' &&
+          Math.abs(this.drive.velocity) < (this.peaceful ? 68 : 110)),
       brake = k.has('s') || k.has('arrowdown');
     s.boost = false;
     stepDrive(this.drive, gas, brake, dt);
+    if (this.peaceful)
+      this.drive.velocity = clamp(this.drive.velocity, -28, 120);
     s.speed = Math.abs(this.drive.velocity);
     s.velocity = this.drive.velocity;
     s.gear = this.drive.gear;
@@ -573,14 +613,21 @@ export class RaceEngine {
     const curve = this.course.curvature(s.distance);
     this.x +=
       this.steer * (s.velocity * 0.05) * dt -
-      curve * (s.speed / 3.6) ** 2 * 0.045 * dt;
+      curve * (s.speed / 3.6) ** 2 * (this.peaceful ? 0.006 : 0.045) * dt;
+    if (this.peaceful && Math.abs(input) < 0.02)
+      this.x = T.MathUtils.damp(this.x, 0, 0.5, dt);
     s.steering = this.steer;
     s.offset = this.x;
     s.curve = curve;
     if (Math.abs(this.x) > 10.2 && s.speed > 15) {
       this.x = clamp(this.x, -10.2, 10.2);
-      this.finish('barrier');
-      return;
+      if (this.peaceful) {
+        this.drive.velocity *= 0.75;
+        this.x = clamp(this.x, -9.7, 9.7);
+      } else {
+        this.finish('barrier');
+        return;
+      }
     }
     s.distance = clamp(
       s.distance + (s.velocity / 3.6) * dt,
@@ -604,8 +651,13 @@ export class RaceEngine {
         Math.abs(car.x - this.x) < 1.95
       ) {
         car.hit = true;
-        this.finish('traffic');
-        return;
+        if (this.peaceful) {
+          this.drive.velocity = Math.min(this.drive.velocity, car.speed * 3.6);
+          car.z = s.distance + 12;
+        } else {
+          this.finish('traffic');
+          return;
+        }
       }
       if (!car.passed && delta < -5 && s.velocity > 0) {
         car.passed = true;
@@ -622,6 +674,13 @@ export class RaceEngine {
           s.combo = 1;
         }
       }
+      if (
+        this.peaceful &&
+        delta > 0 &&
+        delta < 35 &&
+        Math.abs(car.x - this.x) < 2.5
+      )
+        this.drive.velocity = Math.min(this.drive.velocity, car.speed * 3.6);
       if (delta < -55 || delta > 800) {
         car.z = s.distance + 500 + rand(s.time + car.speed) * 160;
         car.x = [-8, -4, 0, 4, 8][Math.floor(rand(s.time + car.speed) * 5)];

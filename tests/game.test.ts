@@ -207,3 +207,33 @@ test('reverse reduces course position without adding forward distance', () => {
   assert(e.state.distance < 100);
   assert.equal(e.furthest, 100);
 });
+test('peaceful drive cruises gently, forgives collisions and stays on the road', () => {
+  const { e, endings } = fixture();
+  e.peaceful = true;
+  e.cruise = true;
+  e.drive = newDrive();
+  e.traffic = [{ z: 103, x: 0, speed: 18, hit: false, passed: false }];
+  e.simulate(0.1);
+  assert.equal(e.state.mode, 'racing');
+  assert.equal(endings.length, 0);
+  assert(e.state.speed > 0);
+  e.x = 11;
+  e.drive.velocity = 65;
+  e.simulate(0.025);
+  assert.equal(e.state.mode, 'racing');
+  assert(Math.abs(e.x) < 10);
+  assert(e.drive.velocity <= 65);
+  e.keys.add('s');
+  for (let i = 0; i < 50; i++) e.simulate(0.025);
+  assert.equal(e.state.speed, 0);
+});
+test('experience settings migrate to quiet daytime defaults and persist explicit choices', () => {
+  const p = parseProfile(
+    JSON.stringify({ version: 1, settings: { route: 'hangang' } }),
+  );
+  assert(p.settings.daylight && p.settings.peaceful && p.settings.cruise);
+  p.settings.daylight = false;
+  p.settings.peaceful = false;
+  p.settings.cruise = false;
+  assert.deepEqual(parseProfile(JSON.stringify(p)), p);
+});

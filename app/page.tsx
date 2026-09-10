@@ -6,7 +6,7 @@ import {
   RotateCcw,
   ArrowRight,
   Camera,
-  Music2,
+  Settings2,
   Trophy,
   MapPin,
   Flag,
@@ -96,7 +96,9 @@ function RouteMap({
 export default function Home() {
   const canvas = useRef<HTMLCanvasElement>(null),
     engine = useRef<RaceEngine | null>(null),
-    profileRef = useRef(blankProfile());
+    profileRef = useRef(blankProfile()),
+    gesture = useRef({ x: 0, y: 0, moved: false, lastTap: 0 }),
+    dialog = useRef<HTMLDialogElement>(null);
   const [hud, setHud] = useState(() => initial()),
     [profile, setProfile] = useState(blankProfile),
     [reward, setReward] = useState<ReturnType<typeof awardRun> | null>(null),
@@ -140,6 +142,11 @@ export default function Home() {
         (window as Window & { __race?: RaceEngine }).__race = e;
       e.setColor(p.settings.color);
       e.setTransmission(p.settings.transmission);
+      e.configureExperience(
+        p.settings.daylight,
+        p.settings.peaceful,
+        p.settings.cruise,
+      );
       e.audio.setVolumes(p.settings.music, p.settings.engine);
     } catch (error) {
       console.error(error);
@@ -167,49 +174,218 @@ export default function Home() {
     store(p);
     engine.current?.audio.setVolumes(p.settings.music, p.settings.engine);
     engine.current?.setTransmission(p.settings.transmission);
+    engine.current?.configureExperience(
+      p.settings.daylight,
+      p.settings.peaceful,
+      p.settings.cruise,
+    );
   };
   const select = (id: RouteId) => {
     engine.current?.selectRoute(id);
     settings({ route: id });
     setReward(null);
   };
-  const touch = (key: string) => ({
-    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
-      engine.current?.keys.add(key);
-    },
-    onPointerUp: () => engine.current?.keys.delete(key),
-    onPointerCancel: () => engine.current?.keys.delete(key),
-    onLostPointerCapture: () => engine.current?.keys.delete(key),
-  });
   const filtered = ROUTES.filter((r) =>
     `${r.name} ${r.subtitle} ${r.difficulty}`.includes(query.trim()),
   );
-  const wheel = (e: React.PointerEvent<HTMLDivElement>) => {
-    const bounds = e.currentTarget.getBoundingClientRect();
-    if (engine.current)
-      engine.current.steeringInput = Math.max(
-        -1,
-        Math.min(
-          1,
-          (e.clientX - bounds.left - bounds.width / 2) / (bounds.width * 0.4),
-        ),
-      );
-  };
-  const releaseWheel = () => {
-    if (engine.current) engine.current.steeringInput = 0;
+  useEffect(() => {
+    if (hud.mode === 'paused') {
+      if (!dialog.current?.open) dialog.current?.showModal();
+    } else {
+      dialog.current?.close();
+      if (hud.mode === 'racing') canvas.current?.focus();
+    }
+  }, [hud.mode]);
+  const releaseGesture = () => {
+    if (engine.current) {
+      engine.current.steeringInput = 0;
+      engine.current.keys.delete('s');
+      engine.current.keys.delete('w');
+    }
   };
   const course = getCourse(hud.route),
     active = hud.mode === 'racing' || hud.mode === 'paused',
     level = levelInfo(profile.xp),
-    nextLandmark = course.config.landmarks.find(
-      (l) => l.at * course.length > hud.distance,
-    ),
     record = profile.records[hud.route];
+  const preferences = () => (
+    <div className="preferences">
+      {storageError && (
+        <p role="status">
+          저장 공간을 사용할 수 없어 이번 세션에만 설정이 유지됩니다.
+        </p>
+      )}
+      <fieldset>
+        <legend>풍경</legend>
+        <div className="choice-row">
+          <button
+            aria-pressed={profile.settings.daylight}
+            onClick={() => settings({ daylight: true })}
+          >
+            ☀ 맑은 낮
+          </button>
+          <button
+            aria-pressed={!profile.settings.daylight}
+            onClick={() => settings({ daylight: false })}
+          >
+            ☾ 도시의 밤
+          </button>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>달리는 방식</legend>
+        <div className="choice-row">
+          <button
+            aria-pressed={profile.settings.peaceful}
+            onClick={() => settings({ peaceful: true })}
+          >
+            힐링 드라이브
+          </button>
+          <button
+            aria-pressed={!profile.settings.peaceful}
+            onClick={() => settings({ peaceful: false })}
+          >
+            레이싱
+          </button>
+        </div>
+        <p>
+          {profile.settings.peaceful
+            ? '충돌해도 끝나지 않아요. 커브를 부드럽게 보조합니다.'
+            : '충돌 시 종료됩니다. 기록은 설정에서 확인하세요.'}
+        </p>
+        <label className="check-setting">
+          <input
+            type="checkbox"
+            checked={profile.settings.cruise}
+            onChange={(e) => settings({ cruise: e.target.checked })}
+          />
+          편안한 정속 주행 · 브레이크로 감속
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>소리</legend>
+        <label>
+          시티팝 BGM
+          <input
+            aria-label="BGM 볼륨"
+            type="range"
+            min="0"
+            max="1"
+            step=".05"
+            value={profile.settings.music}
+            onChange={(e) => settings({ music: Number(e.target.value) })}
+          />
+        </label>
+        <label>
+          엔진과 도로
+          <input
+            aria-label="엔진 볼륨"
+            type="range"
+            min="0"
+            max="1"
+            step=".05"
+            value={profile.settings.engine}
+            onChange={(e) => settings({ engine: Number(e.target.value) })}
+          />
+        </label>
+      </fieldset>
+      <details>
+        <summary>시점 · 변속 · 조작 방법</summary>
+        <button
+          className="setting-camera"
+          onClick={() => engine.current?.changeCamera()}
+        >
+          시점: {hud.camera === 1 ? '도로 바라보기' : '차량 뒤에서 보기'} · 변경
+        </button>
+        <div className="choice-row">
+          <button
+            aria-pressed={profile.settings.transmission === 'auto'}
+            onClick={() => settings({ transmission: 'auto' })}
+          >
+            오토 AT
+          </button>
+          <button
+            aria-pressed={profile.settings.transmission === 'manual'}
+            onClick={() => settings({ transmission: 'manual' })}
+          >
+            수동 MT
+          </button>
+        </div>
+        <div className="choice-row">
+          {(['P', 'R', 'N', 'D'] as const).map((g) => (
+            <button
+              key={g}
+              aria-pressed={hud.selector === g}
+              onClick={() => engine.current?.selectGear(g)}
+            >
+              {g} · {{ P: '잠금', R: '후진', N: '중립', D: '전진' }[g]}
+            </button>
+          ))}
+        </div>
+        {hud.notice && <p role="status">{hud.notice}</p>}
+        <p>
+          좌우 드래그: 핸들 · 아래 드래그: 브레이크 · 위 드래그: 액셀
+          <br />
+          W/S: 액셀/브레이크 · A/D: 조향 · Q/E: 수동 변속
+          <br />
+          C: 시점 · Esc: 설정 · 화면 두 번 탭: 설정
+          <br />
+          방향과 P 잠금은 차량이 정지한 뒤 바꿀 수 있어요.
+        </p>
+      </details>
+    </div>
+  );
   return (
     <main className={`game-shell ${hud.mode} ${hud.boost ? 'boosting' : ''}`}>
-      <canvas ref={canvas} aria-label="서울 명소 곡선 코스 3D 레이싱" />
+      <canvas
+        ref={canvas}
+        tabIndex={0}
+        aria-label="드라이브 화면. 좌우로 드래그해 조향, 아래로 드래그해 브레이크. 두 번 탭하거나 Escape 키로 설정."
+        onPointerDown={(e) => {
+          if (hud.mode !== 'racing') return;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          gesture.current = {
+            ...gesture.current,
+            x: e.clientX,
+            y: e.clientY,
+            moved: false,
+          };
+        }}
+        onPointerMove={(e) => {
+          if (
+            hud.mode !== 'racing' ||
+            !e.currentTarget.hasPointerCapture(e.pointerId) ||
+            !engine.current
+          )
+            return;
+          const dx = e.clientX - gesture.current.x,
+            dy = e.clientY - gesture.current.y;
+          if (Math.abs(dx) + Math.abs(dy) > 12) gesture.current.moved = true;
+          engine.current.steeringInput = Math.max(-1, Math.min(1, dx / 100));
+          if (dy > 45) engine.current.keys.add('s');
+          else engine.current.keys.delete('s');
+          if (dy < -45) engine.current.keys.add('w');
+          else engine.current.keys.delete('w');
+        }}
+        onPointerUp={() => {
+          if (hud.mode !== 'racing') return;
+          releaseGesture();
+          const now = Date.now();
+          if (!gesture.current.moved && now - gesture.current.lastTap < 350) {
+            engine.current?.pause();
+            gesture.current.lastTap = 0;
+          } else gesture.current.lastTap = gesture.current.moved ? 0 : now;
+        }}
+        onPointerCancel={releaseGesture}
+        onLostPointerCapture={releaseGesture}
+      />
+      {hud.mode === 'racing' && (
+        <button
+          className="invisible-settings"
+          onClick={() => engine.current?.pause()}
+        >
+          드라이브 설정 열기
+        </button>
+      )}
       <div className="grain" />
       <header className="topbar">
         <a className="brand" href={import.meta.env.BASE_URL}>
@@ -218,14 +394,14 @@ export default function Home() {
         <div className="top-actions">
           <span className="level-badge">LV. {level.level}</span>
           <button
-            aria-label="음악·엔진 볼륨 설정"
+            aria-label="드라이브 설정"
             aria-expanded={soundPanel}
             onClick={() => {
               setSoundPanel(!soundPanel);
               void engine.current?.audio.unlock().catch(() => {});
             }}
           >
-            <Music2 size={19} />
+            <Settings2 size={19} />
           </button>
           {active && (
             <>
@@ -249,66 +425,27 @@ export default function Home() {
           )}
         </div>
       </header>
-      {soundPanel && (
-        <aside className="audio-panel">
+      {soundPanel && hud.mode === 'ready' && (
+        <aside className="audio-panel experience-panel">
           <div>
-            <strong>NIGHT DRIVE RADIO</strong>
-            <button
-              aria-label="볼륨 설정 닫기"
-              onClick={() => setSoundPanel(false)}
-            >
+            <strong>드라이브 설정</strong>
+            <button aria-label="설정 닫기" onClick={() => setSoundPanel(false)}>
               <X size={18} />
             </button>
           </div>
-          <p>
-            Han River Afterglow
-            <br />
-            <small>오리지널 시티팝 · CC0 · 104 BPM</small>
-          </p>
-          <label>
-            BGM <span>{Math.round(profile.settings.music * 100)}%</span>
-            <input
-              aria-label="BGM 볼륨"
-              type="range"
-              min="0"
-              max="1"
-              step=".05"
-              value={profile.settings.music}
-              onChange={(e) => settings({ music: Number(e.target.value) })}
-            />
-          </label>
-          <label>
-            엔진 / 효과음{' '}
-            <span>{Math.round(profile.settings.engine * 100)}%</span>
-            <input
-              aria-label="엔진 볼륨"
-              type="range"
-              min="0"
-              max="1"
-              step=".05"
-              value={profile.settings.engine}
-              onChange={(e) => settings({ engine: Number(e.target.value) })}
-            />
-          </label>
-          <a
-            href={`${import.meta.env.BASE_URL}AUDIO-CREDITS.md`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            음원 크레딧 ↗
-          </a>
+          {preferences()}
         </aside>
       )}
       {hud.mode === 'ready' && (
         <>
           <section className="garage-intro">
-            <div className="eyebrow">SEOUL / CHAPTER 04</div>
+            <div className="eyebrow">SEOUL / A QUIETER DRIVE</div>
             <h1>
-              다음 코너엔,
+              서두르지 않아도,
               <br />
-              <em>새로운 서울.</em>
+              <em>좋은 하루.</em>
             </h1>
-            <p>강변에서 산길까지. 오늘의 코스를 고르세요.</p>
+            <p>햇살 아래 강변, 또는 도시의 밤. 천천히 달려보세요.</p>
             <div className="driver-profile">
               <div>
                 <Trophy size={18} />
@@ -365,7 +502,8 @@ export default function Home() {
               <ArrowUpRight size={22} />
             </button>
             <div className="enter-hint">
-              {hud.error || '차량·가드레일 충돌 시 게임오버 · ENTER 출발'}
+              {hud.error ||
+                '좌우 드래그로 조향 · 위/아래로 액셀/브레이크 · 두 번 탭 또는 ESC로 설정'}
             </div>
           </section>
           <section className="route-picker" aria-label="맵 선택">
@@ -457,113 +595,55 @@ export default function Home() {
           </a>
         </>
       )}
-      {active && (
-        <>
-          <div className="race-top">
-            <div>
-              <span className="eyebrow">{course.config.subtitle}</span>
-              <h2>{course.config.name}</h2>
-              <span className="next-landmark">
-                {nextLandmark
-                  ? `${nextLandmark.name} · ${Math.max(0, Math.round(nextLandmark.at * course.length - hud.distance))} m`
-                  : '마지막 코너 · 결승선으로'}
-              </span>
-            </div>
-            <div className="timer">
-              <span>RACE TIME</span>
-              {time(hud.time)}
-              <small>평점 3점 목표 · {time(course.config.target)} 이내</small>
-            </div>
-          </div>
-          <div className="route-progress">
-            <i style={{ width: `${(hud.distance / hud.length) * 100}%` }} />
-          </div>
-          <div className="live-route">
-            <RouteMap id={hud.route} distance={hud.distance} />
-            <span>
-              {Math.abs(hud.curve) > 0.001
-                ? hud.curve > 0
-                  ? '우측 커브 ↗'
-                  : '↖ 좌측 커브'
-                : '직선 구간'}
-            </span>
-          </div>
-          <div className="race-score">
-            <strong>{hud.score.toLocaleString()}</strong>
-            <span>SCORE · 추월 {hud.passed}</span>
-          </div>
-          {hud.notice && (
-            <div className="race-notice" role="status">
-              {hud.notice}
-            </div>
-          )}
-          <div className="telemetry">
-            <div className="speed">
-              <b>{Math.round(hud.speed).toString().padStart(3, '0')}</b>
-              <span>
-                KM/H
-                <small className="gear">
-                  {hud.selector === 'D' ? hud.gear : hud.selector}
-                </small>
-              </span>
-            </div>
-            <div className="meters">
-              <label>
-                <span>엔진 회전수</span>
-                <span>{Math.round(hud.rpm)} RPM</span>
-              </label>
-              <div>
-                <i style={{ width: `${hud.rpm / 85}%` }} />
-              </div>
-              <label>
-                <span>
-                  {hud.transmission === 'auto' ? '자동 변속' : '수동 변속'}
-                </span>
-                <span>
-                  {hud.selector === 'D'
-                    ? `전진 ${hud.gear}단`
-                    : hud.selector === 'R'
-                      ? '후진'
-                      : hud.selector === 'N'
-                        ? '중립'
-                        : '주차 잠금'}
-                </span>
-              </label>
-            </div>
-          </div>
-          <div className="remaining">
-            <span>TO FINISH</span>
-            <strong>
-              {((hud.length - hud.distance) / 1000).toFixed(2)}
-              <small> km</small>
-            </strong>
-          </div>
-        </>
-      )}
-      {hud.mode === 'paused' && (
-        <div className="overlay">
-          <section className="result">
-            <span className="eyebrow">PAUSED / {course.config.name}</span>
+      <dialog
+        ref={dialog}
+        className="drive-settings"
+        onCancel={(e) => {
+          e.preventDefault();
+          engine.current?.pause();
+        }}
+        aria-label="드라이브 설정"
+      >
+        <div className="settings-heading">
+          <div>
+            <small>{course.config.name}</small>
             <h2>잠시 쉬어가기</h2>
-            <p>커브에서는 감속하세요. 한 번의 충돌로 레이스가 끝납니다.</p>
-            <button
-              className="start-button"
-              onClick={() => engine.current?.pause()}
-            >
-              계속 달리기 <Play size={20} />
-            </button>
-            <button className="text-button" onClick={start}>
-              처음부터 다시 시작
-            </button>
-            <button
-              className="text-button secondary-action"
-              onClick={() => engine.current?.garage()}
-            >
-              맵 선택으로
-            </button>
-          </section>
+          </div>
+          <button
+            autoFocus
+            onClick={() => engine.current?.pause()}
+            aria-label="설정 닫고 계속 달리기"
+          >
+            <X size={22} />
+          </button>
         </div>
-      )}
+        {preferences()}
+        <details>
+          <summary>이번 주행과 내 기록</summary>
+          <p>
+            주행 {(hud.distance / 1000).toFixed(2)} km · {Math.round(hud.speed)}{' '}
+            km/h · {Math.round(hud.rpm)} RPM
+            <br />
+            레벨 {level.level} · {profile.xp} XP · 누적{' '}
+            {(profile.distance / 1000).toFixed(1)} km
+          </p>
+          <RouteMap id={hud.route} distance={hud.distance} />
+        </details>
+        <div className="settings-actions">
+          <button
+            className="start-button"
+            onClick={() => engine.current?.pause()}
+          >
+            계속 달리기 <Play size={18} />
+          </button>
+          <button
+            className="text-button"
+            onClick={() => engine.current?.garage()}
+          >
+            다른 코스 고르기
+          </button>
+        </div>
+      </dialog>
       {hud.mode === 'finished' && (
         <div className="overlay">
           <section className="result">
@@ -574,7 +654,7 @@ export default function Home() {
             </span>
             <h2>
               {hud.endReason === 'finish'
-                ? '서울의 밤을 완주했습니다.'
+                ? '기분 좋은 드라이브였습니다.'
                 : hud.endReason === 'traffic'
                   ? '차량과 충돌했습니다.'
                   : '가드레일과 충돌했습니다.'}
@@ -661,145 +741,6 @@ export default function Home() {
             : 'FERRARI 458 ITALIA'}
         </span>
       </footer>
-      {hud.mode === 'racing' && (
-        <section className="cockpit" aria-label="운전 조작부">
-          <div className="wheel-module">
-            <div
-              className="steering-wheel"
-              role="slider"
-              tabIndex={0}
-              aria-label="핸들"
-              aria-valuemin={-100}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(hud.steering * 100)}
-              aria-valuetext={
-                hud.steering < -0.1
-                  ? '왼쪽'
-                  : hud.steering > 0.1
-                    ? '오른쪽'
-                    : '중앙'
-              }
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId);
-                wheel(e);
-              }}
-              onPointerMove={(e) => {
-                if (e.currentTarget.hasPointerCapture(e.pointerId)) wheel(e);
-              }}
-              onPointerUp={releaseWheel}
-              onPointerCancel={releaseWheel}
-              onLostPointerCapture={releaseWheel}
-              onBlur={releaseWheel}
-              onKeyDown={(e) => {
-                if (['ArrowLeft', 'ArrowRight'].includes(e.key))
-                  e.preventDefault();
-              }}
-            >
-              <svg
-                viewBox="0 0 160 160"
-                style={{ transform: `rotate(${hud.steering * 110}deg)` }}
-                aria-hidden="true"
-              >
-                <circle cx="80" cy="80" r="63" />
-                <path d="M20 70 L65 80 M140 70 L95 80 M80 96 L80 143" />
-                <circle className="wheel-hub" cx="80" cy="80" r="24" />
-                <path className="wheel-mark" d="M80 12 L80 27" />
-              </svg>
-            </div>
-            <span>핸들 · 좌우로 드래그</span>
-          </div>
-          <div className="gear-module">
-            <div className="transmission-toggle">
-              <button
-                aria-pressed={profile.settings.transmission === 'auto'}
-                onClick={() => settings({ transmission: 'auto' })}
-              >
-                오토 AT
-              </button>
-              <button
-                aria-pressed={profile.settings.transmission === 'manual'}
-                onClick={() => settings({ transmission: 'manual' })}
-              >
-                수동 MT
-              </button>
-            </div>
-            <div className="selector">
-              {(['P', 'R', 'N', 'D'] as const).map((g) => (
-                <button
-                  key={g}
-                  aria-label={
-                    { P: '주차 잠금 P', R: '후진 R', N: '중립 N', D: '전진 D' }[
-                      g
-                    ]
-                  }
-                  aria-pressed={hud.selector === g}
-                  onClick={() => engine.current?.selectGear(g)}
-                >
-                  {g}
-                  <small>
-                    {{ P: '잠금', R: '후진', N: '중립', D: '전진' }[g]}
-                  </small>
-                </button>
-              ))}
-            </div>
-            {profile.settings.transmission === 'manual' ? (
-              <div className="manual-shift">
-                <button
-                  aria-label="기어 내리기"
-                  onClick={() => engine.current?.shift(-1)}
-                >
-                  −
-                </button>
-                <span>
-                  {hud.gear}단 <small>Q / E</small>
-                </span>
-                <button
-                  aria-label="기어 올리기"
-                  onClick={() => engine.current?.shift(1)}
-                >
-                  ＋
-                </button>
-              </div>
-            ) : (
-              <p>정지 후 P · R · D 전환</p>
-            )}
-          </div>
-          <div className="pedals">
-            <button
-              className="brake-pedal"
-              {...touch('arrowdown')}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault();
-                  engine.current?.keys.add('arrowdown');
-                }
-              }}
-              onKeyUp={() => engine.current?.keys.delete('arrowdown')}
-              onBlur={() => engine.current?.keys.delete('arrowdown')}
-            >
-              <i />
-              <strong>브레이크</strong>
-              <small>S / ↓</small>
-            </button>
-            <button
-              className="gas-pedal"
-              {...touch('arrowup')}
-              onKeyDown={(e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
-                  e.preventDefault();
-                  engine.current?.keys.add('arrowup');
-                }
-              }}
-              onKeyUp={() => engine.current?.keys.delete('arrowup')}
-              onBlur={() => engine.current?.keys.delete('arrowup')}
-            >
-              <i />
-              <strong>액셀</strong>
-              <small>W / ↑</small>
-            </button>
-          </div>
-        </section>
-      )}
     </main>
   );
 }

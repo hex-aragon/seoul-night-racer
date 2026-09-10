@@ -14,6 +14,42 @@ export class TrackWorld {
   constructor(public course: Course) {
     this.build();
   }
+  setDaylight(day: boolean) {
+    this.root.traverse((o) => {
+      if (o instanceof T.Mesh) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of mats)
+          if (m instanceof T.MeshStandardMaterial) {
+            if (m.userData.nightEmission === undefined)
+              m.userData.nightEmission = m.emissiveIntensity;
+            m.emissiveIntensity = day ? 0.02 : m.userData.nightEmission;
+            if (m.emissiveMap && m.map) {
+              if (!m.userData.nightMap) {
+                m.userData.nightMap = m.map;
+                const c = document.createElement('canvas');
+                c.width = 128;
+                c.height = 256;
+                const g = c.getContext('2d')!;
+                g.fillStyle = '#a6b7b9';
+                g.fillRect(0, 0, 128, 256);
+                for (let y = 5; y < 256; y += 15)
+                  for (let x = 4; x < 128; x += 16) {
+                    g.fillStyle = (x + y) % 3 ? '#597c91' : '#7a9cad';
+                    g.fillRect(x, y, 7, 8);
+                  }
+                const tex = new T.CanvasTexture(c);
+                tex.colorSpace = T.SRGBColorSpace;
+                m.userData.dayMap = tex;
+              }
+              m.map = day ? m.userData.dayMap : m.userData.nightMap;
+              m.roughness = day ? 0.8 : 0.4;
+              m.needsUpdate = true;
+            }
+          }
+      }
+    });
+    if (this.fountains) this.fountains.visible = !day;
+  }
   private material(color: string, emissive = false) {
     const key = color + emissive;
     if (!this.materials.has(key))
@@ -539,6 +575,17 @@ export class TrackWorld {
     if (this.water) this.water.roughness = 0.25 + Math.sin(t * 0.0003) * 0.035;
   }
   dispose() {
+    const seen = new Set<T.Material>();
+    this.root.traverse((o) => {
+      if (o instanceof T.Mesh) {
+        for (const m of Array.isArray(o.material) ? o.material : [o.material])
+          if (!seen.has(m)) {
+            seen.add(m);
+            m.userData.dayMap?.dispose();
+            m.userData.nightMap?.dispose();
+          }
+      }
+    });
     const geos = new Set<T.BufferGeometry>(),
       mats = new Set<T.Material>(),
       textures = new Set<T.Texture>();

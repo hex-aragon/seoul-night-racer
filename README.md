@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 04
+# Seoul / Midnight Run — Chapter 05
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -19,11 +19,11 @@ All 123 maps are available immediately: the three landmark routes plus 120 deter
 - C: chase / hood camera
 - P / Escape: pause
 - Enter: start / restart
-- Mouse / touch: drag the wheel horizontally; hold the separate accelerator and brake pedals
+- Mouse / touch: drag the scene horizontally to steer, up for throttle, down for brake; double-tap to open settings
 - AT / MT: automatic or sequential manual 1–7 speed transmission
-- P / R / N / D selector buttons: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
+- P / R / N / D selector buttons in settings: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
 - Runs start 20 m into the route, allowing a short reverse maneuver. Route boundaries limit travel; these are road courses, not an open-world parking simulator.
-- Music button: independently adjust BGM and engine volume
+- Settings button in the garage / Escape while driving: adjust BGM and engine volume
 
 A vehicle or guardrail collision immediately ends the run. Restart the same route or return to the garage to select another map.
 
@@ -60,3 +60,9 @@ Tests cover course continuity, curve forces, collision and finish outcomes, once
 ## Extension points
 
 `app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions, free steering through parking lots and selectable EV/Tesla models are future work; P currently locks the vehicle, not a parking minigame. No Tesla or EV vehicle is presented as playable.
+
+## Quiet driving experience
+
+Driving shows only the 3D world: no HUD, score, steering wheel panel, map, branding or footer. Double-tap/click the scenery or press Escape to pause and open settings (keyboard users can also Tab to the settings action). Drag horizontally to steer, upward for throttle and downward for brake; releasing clears gesture controls. Settings contain daylight/night, peaceful/racing mode, cruise assist, sound, camera, transmission, map and local progress. The native modal traps focus and resumes the canvas on close.
+
+Daylight adjusts sky, fog, hemisphere/sun lighting and window emissions; night restores illuminated scenery. Peaceful mode defaults to a road-facing camera with gentle ~68 km/h cruise, corner assistance and forgiving collisions. Racing is still selectable. Peaceful finishes earn distance/exploration XP but do not set competitive best times.
