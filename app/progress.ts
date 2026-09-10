@@ -1,4 +1,4 @@
-import type { RouteId } from './routes';
+import { ROUTES, type RouteId } from './routes';
 export const STORAGE_KEY = 'seoul-midnight-run.profile.v1';
 export type Result = {
   route: RouteId;
@@ -24,7 +24,13 @@ export type Profile = {
   records: Partial<Record<RouteId, RecordEntry>>;
   landmarks: string[];
   badges: string[];
-  settings: { music: number; engine: number; color: string; route: RouteId };
+  settings: {
+    music: number;
+    engine: number;
+    color: string;
+    route: RouteId;
+    transmission: 'auto' | 'manual';
+  };
 };
 export const blankProfile = (): Profile => ({
   version: 1,
@@ -34,7 +40,13 @@ export const blankProfile = (): Profile => ({
   records: {},
   landmarks: [],
   badges: [],
-  settings: { music: 0.5, engine: 0.65, color: '#f31931', route: 'hangang' },
+  settings: {
+    music: 0.5,
+    engine: 0.65,
+    color: '#f31931',
+    route: 'hangang',
+    transmission: 'auto',
+  },
 });
 const nonnegative = (x: unknown, fallback = 0) =>
   typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : fallback;
@@ -47,7 +59,7 @@ export function parseProfile(raw: string | null): Profile {
     p.xp = Math.floor(nonnegative(d.xp));
     p.runs = Math.floor(nonnegative(d.runs));
     p.distance = nonnegative(d.distance);
-    for (const id of ['hangang', 'namsan', 'seoul'] as const) {
+    for (const id of ROUTES.map((r) => r.id)) {
       const r = d.records?.[id];
       if (r)
         p.records[id] = {
@@ -73,9 +85,11 @@ export function parseProfile(raw: string | null): Profile {
       p.settings.engine = Math.min(1, nonnegative(d.settings.engine, 0.65));
       if (/^#[\da-f]{6}$/i.test(d.settings.color))
         p.settings.color = d.settings.color;
-      if (['hangang', 'namsan', 'seoul'].includes(d.settings.route))
+      if (ROUTES.some((r) => r.id === d.settings.route))
         p.settings.route = d.settings.route;
     }
+    p.settings.transmission =
+      d.settings?.transmission === 'manual' ? 'manual' : 'auto';
     return p;
   } catch {
     return p;

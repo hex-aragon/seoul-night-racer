@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 03
+# Seoul / Midnight Run — Chapter 04
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -10,23 +10,26 @@ Three.js browser arcade racing with a detailed Ferrari 458 Italia, original city
 - **남산 와인딩**: continuous S bends, hills, trees, N Seoul Tower.
 - **서울 랜드마크 투어**: city bends, Gwanghwamun, Cheonggyecheon, Lotte World Tower.
 
-All three maps are available immediately. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
+All 123 maps are available immediately: the three landmark routes plus 120 deterministic Seoul district variations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
 
 ## Controls
 
 - WASD / arrow keys: accelerate, brake, steer
-- Space: boost
+- Q / E: shift down / up in manual mode
 - C: chase / hood camera
 - P / Escape: pause
 - Enter: start / restart
-- Mobile: on-screen steering, throttle, brake and boost
+- Mouse / touch: drag the wheel horizontally; hold the separate accelerator and brake pedals
+- AT / MT: automatic or sequential manual 1–7 speed transmission
+- P / R / N / D selector buttons: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
+- Runs start 20 m into the route, allowing a short reverse maneuver. Route boundaries limit travel; these are road courses, not an open-world parking simulator.
 - Music button: independently adjust BGM and engine volume
 
 A vehicle or guardrail collision immediately ends the run. Restart the same route or return to the garage to select another map.
 
 ## Local progression
 
-XP, levels, best times, route stars, discovered landmarks, achievements, paint and audio settings are stored in `localStorage` under `seoul-midnight-run.profile.v1`. No account or server is needed. Storage is specific to this browser and origin; clearing site data removes it. If storage is unavailable, a visible warning explains that only the current session is retained.
+XP, levels, best times, route stars, discovered landmarks, achievements, paint, transmission and audio settings are stored in `localStorage` under `seoul-midnight-run.profile.v1`. No account or server is needed. Storage is specific to this browser and origin; clearing site data removes it. If storage is unavailable, a visible warning explains that only the current session is retained.
 
 Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Three-star target times are displayed in each race; slower finishes award one or two stars. A slower or crashed run never replaces a better record.
 
@@ -53,3 +56,7 @@ npm run build
 Tests cover course continuity, curve forces, collision and finish outcomes, once-only rewards, corrupt-storage recovery, XP, stars and best records. Browser checks cover map switching, music-buffer output, crash/restart/finish, local persistence, and mobile controls. A development-only `?qa` URL exposes the engine for controlled test checkpoints; this hook is stripped from production.
 
 `dist/` is a static site. GitHub Actions deploys `main` to GitHub Pages with the repository base path configured in `vite.config.ts`.
+
+## Extension points
+
+`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions, free steering through parking lots and selectable EV/Tesla models are future work; P currently locks the vehicle, not a parking minigame. No Tesla or EV vehicle is presented as playable.

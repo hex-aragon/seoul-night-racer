@@ -1,3 +1,10 @@
+import {
+  newDrive,
+  stepDrive,
+  selectGear,
+  type Selector,
+  type Transmission,
+} from './drivetrain';
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
@@ -14,6 +21,11 @@ export type Mode = 'ready' | 'racing' | 'paused' | 'finished';
 export type Snapshot = {
   mode: Mode;
   speed: number;
+  velocity: number;
+  selector: Selector;
+  transmission: Transmission;
+  rpm: number;
+  steering: number;
   distance: number;
   time: number;
   nitro: number;
@@ -39,6 +51,11 @@ export type Snapshot = {
 export const initial = (route: RouteId = 'hangang'): Snapshot => ({
   mode: 'ready',
   speed: 0,
+  velocity: 0,
+  selector: 'D',
+  transmission: 'auto',
+  rpm: 900,
+  steering: 0,
   distance: 0,
   time: 0,
   nitro: 100,
@@ -77,6 +94,34 @@ type Traffic = {
 export class RaceEngine {
   state = initial();
   keys = new Set<string>();
+  drive = newDrive();
+  steeringInput = 0;
+  private furthest = 0;
+  setTransmission = (mode: Transmission) => {
+    this.drive.transmission = mode;
+    this.state.transmission = mode;
+  };
+  selectGear = (selector: Selector) => {
+    if (!selectGear(this.drive, selector)) {
+      this.state.notice = '브레이크로 정지한 뒤 기어를 바꾸세요';
+      this.noticeUntil = this.state.time + 3;
+    }
+    this.state.selector = this.drive.selector;
+    this.update({ ...this.state });
+  };
+  shift = (delta: number) => {
+    if (this.drive.transmission !== 'manual' || this.drive.selector !== 'D')
+      return;
+    const gear = clamp(this.drive.gear + delta, 1, 7);
+    if (Math.abs(this.drive.velocity) > gear * 46) {
+      this.state.notice = '속도를 낮춘 뒤 저단으로 변속하세요';
+      this.noticeUntil = this.state.time + 3;
+      return;
+    }
+    this.drive.gear = gear;
+    this.state.gear = gear;
+    this.update({ ...this.state });
+  };
   audio = new DriveAudio();
   course: Course = getCourse('hangang');
   private renderer: T.WebGLRenderer;
@@ -392,11 +437,22 @@ export class RaceEngine {
   start = () => {
     if (!this.state.loaded || this.state.error) return;
     const { route, camera } = this.state;
-    this.state = { ...initial(route), loaded: true, mode: 'racing', camera };
+    const transmission = this.drive.transmission;
+    this.drive = { ...newDrive(), transmission };
+    this.furthest = 0;
+    this.state = {
+      ...initial(route),
+      loaded: true,
+      mode: 'racing',
+      camera,
+      transmission,
+      distance: 20,
+    };
     this.x = 0;
     this.steer = 0;
     this.hit = 0;
     this.keys.clear();
+    this.steeringInput = 0;
     this.resetTraffic();
     this.snapCamera();
     this.update({ ...this.state });
@@ -408,6 +464,7 @@ export class RaceEngine {
     this.x = 0;
     this.steer = 0;
     this.keys.clear();
+    this.steeringInput = 0;
     this.resetTraffic();
     this.snapCamera();
     this.update({ ...this.state });
@@ -416,6 +473,7 @@ export class RaceEngine {
     if (this.state.mode === 'racing') this.state.mode = 'paused';
     else if (this.state.mode === 'paused') this.state.mode = 'racing';
     this.keys.clear();
+    this.steeringInput = 0;
     this.update({ ...this.state });
   };
   setColor = (color: string) => this.paint.color.set(color);
@@ -453,10 +511,13 @@ export class RaceEngine {
       this.start();
     if (k === 'p' || k === 'escape') this.pause();
     if (k === 'c') this.changeCamera();
+    if (k === 'e') this.shift(1);
+    if (k === 'q') this.shift(-1);
   };
   private keyup = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
   private blur = () => {
     this.keys.clear();
+    this.steeringInput = 0;
     if (this.state.mode === 'racing') this.pause();
   };
   private visibility = () => {
@@ -475,10 +536,11 @@ export class RaceEngine {
       this.audio.crash();
     }
     this.keys.clear();
+    this.steeringInput = 0;
     this.onEnd({
       route: s.route,
       completed: reason === 'finish',
-      distance: s.distance,
+      distance: Math.max(s.distance, this.furthest),
       time: s.time,
       passed: s.passed,
       nearMisses: s.nearMisses,
@@ -494,24 +556,25 @@ export class RaceEngine {
     s.time += dt;
     const gas = k.has('w') || k.has('arrowup'),
       brake = k.has('s') || k.has('arrowdown');
-    s.boost = k.has(' ') && s.nitro > 1 && s.speed > 25 && !brake;
-    const cap = s.boost ? 340 : 285;
-    s.speed = clamp(
-      s.speed + (brake ? -185 : s.boost ? 120 : gas ? 78 : -28) * dt,
-      0,
-      340,
-    );
-    if (s.speed > cap) s.speed = Math.max(cap, s.speed - 80 * dt);
-    s.nitro = clamp(s.nitro + (s.boost ? -24 : 10) * dt, 0, 100);
+    s.boost = false;
+    stepDrive(this.drive, gas, brake, dt);
+    s.speed = Math.abs(this.drive.velocity);
+    s.velocity = this.drive.velocity;
+    s.gear = this.drive.gear;
+    s.selector = this.drive.selector;
+    s.transmission = this.drive.transmission;
+    s.rpm = this.drive.rpm;
     s.maxSpeed = Math.max(s.maxSpeed, s.speed);
     const input =
+      this.steeringInput +
       (k.has('d') || k.has('arrowright') ? 1 : 0) -
       (k.has('a') || k.has('arrowleft') ? 1 : 0);
-    this.steer = T.MathUtils.damp(this.steer, input, 7, dt);
+    this.steer = T.MathUtils.damp(this.steer, clamp(input, -1, 1), 7, dt);
     const curve = this.course.curvature(s.distance);
     this.x +=
-      this.steer * (2 + s.speed * 0.04) * dt -
+      this.steer * (s.velocity * 0.05) * dt -
       curve * (s.speed / 3.6) ** 2 * 0.045 * dt;
+    s.steering = this.steer;
     s.offset = this.x;
     s.curve = curve;
     if (Math.abs(this.x) > 10.2 && s.speed > 15) {
@@ -519,11 +582,17 @@ export class RaceEngine {
       this.finish('barrier');
       return;
     }
-    s.distance = Math.min(
+    s.distance = clamp(
+      s.distance + (s.velocity / 3.6) * dt,
+      0,
       this.course.length,
-      s.distance + (s.speed / 3.6) * dt,
     );
-    s.gear = Math.min(7, 1 + Math.floor(s.speed / 46));
+    if (s.distance === 0 && s.velocity < 0) {
+      this.drive.velocity = 0;
+      s.velocity = 0;
+      s.speed = 0;
+    }
+    this.furthest = Math.max(this.furthest, s.distance);
     for (const car of this.traffic) {
       const old = car.z - s.distance;
       car.z += car.speed * dt;
@@ -538,7 +607,7 @@ export class RaceEngine {
         this.finish('traffic');
         return;
       }
-      if (!car.passed && delta < -5) {
+      if (!car.passed && delta < -5 && s.velocity > 0) {
         car.passed = true;
         s.passed++;
         const gap = Math.abs(car.x - this.x);
@@ -599,7 +668,7 @@ export class RaceEngine {
       c.mesh.visible = c.z - s.distance < 700 && c.z - s.distance > -65;
     });
     this.wheels.forEach((w) => {
-      if (s.mode === 'racing') w.rotation.x -= ((s.speed / 3.6) * dt) / 0.34;
+      if (s.mode === 'racing') w.rotation.x -= ((s.velocity / 3.6) * dt) / 0.34;
     });
     this.flames.forEach((flame) => {
       flame.visible = s.boost;
@@ -616,15 +685,22 @@ export class RaceEngine {
         ready
           ? -(narrow ? 11 : 7.8)
           : hood
-            ? 1.6
-            : -(6.6 + (s.boost ? 0.6 : 0)),
+            ? s.selector === 'R'
+              ? -1.6
+              : 1.6
+            : s.selector === 'R'
+              ? 6.6
+              : -6.6,
       );
     desired.addScaledVector(f.right, ready ? 6 : 0);
     desired.y += ready ? 2.3 : hood ? 1.3 : 2.2;
     this.camera.position.lerp(desired, 1 - Math.exp(-dt * 6));
     const target = ready
       ? f.position.clone().addScaledVector(f.right, narrow ? 0 : -2.2)
-      : this.course.sample(s.distance + 25, this.x * 0.9).position;
+      : this.course.sample(
+          s.distance + (s.selector === 'R' ? -25 : 25),
+          this.x * 0.9,
+        ).position;
     target.y += ready ? (narrow ? 1.5 : 0.6) : 1;
     this.camera.lookAt(target);
     this.camera.fov = T.MathUtils.damp(
@@ -660,6 +736,7 @@ export class RaceEngine {
       this.keys.has('w') || this.keys.has('arrowup'),
       s.boost,
       s.mode,
+      s.rpm,
     );
     this.composer.render();
     if (t - this.ui > 85) {

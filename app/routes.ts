@@ -1,5 +1,5 @@
 import { CatmullRomCurve3, Vector3 } from 'three';
-export type RouteId = 'hangang' | 'namsan' | 'seoul';
+export type RouteId = string;
 export type Landmark = {
   id: string;
   name: string;
@@ -18,6 +18,10 @@ export type RouteConfig = {
   points: Vector3[];
   landmarks: Landmark[];
   target: number;
+  theme?: 'river' | 'hill' | 'city';
+  district?: string;
+  seed?: number;
+  heightScale?: number;
 };
 const points = (n: number, f: (s: number) => [number, number, number]) =>
   Array.from({ length: n }, (_, i) => new Vector3(...f(i / (n - 1))));
@@ -92,6 +96,67 @@ export const ROUTES: RouteConfig[] = [
     ],
   },
 ];
+const districts = [
+  '여의도',
+  '반포',
+  '잠실',
+  '성수',
+  '강남',
+  '종로',
+  '남산',
+  '북악',
+  '마포',
+  '용산',
+  '서초',
+  '송파',
+];
+const variants = [
+  '새벽 강변',
+  '블루아워',
+  '야경 순환',
+  '언덕 산책',
+  '다운타운',
+  '리버사이드',
+  '스카이라인',
+  '골목 커브',
+  '심야 드라이브',
+  '선셋 로드',
+];
+for (let district = 0; district < 12; district++)
+  for (let v = 0; v < 10; v++) {
+    const seed = district * 10 + v + 1,
+      hill = district === 6 || district === 7 || v === 3;
+    const river =
+      !hill && (v === 0 || v === 5 || district === 0 || district === 1);
+    const length = 2100 + ((seed * 137) % 1900),
+      amplitude = 65 + ((seed * 31) % 155),
+      bends = 2 + (seed % 6);
+    const theme = hill ? 'hill' : river ? 'river' : 'city';
+    const base = ROUTES[hill ? 1 : river ? 0 : 2];
+    ROUTES.push({
+      id: `city-${seed}`,
+      name: `${districts[district]} ${variants[v]}`,
+      district: districts[district],
+      subtitle: `서울 · ${theme === 'hill' ? '산자락' : theme === 'river' ? '한강변' : '도심'} · ${v + 1}번 코스`,
+      description: '서울의 지역 분위기를 재해석한 독립 주행 코스',
+      theme,
+      seed,
+      heightScale: 0.35 + (district % 5) * 0.26 + v * 0.025,
+      color: ['#6de5ed', '#ffa1c1', '#ffc76d'][seed % 3],
+      sky: ['#142a41', '#28223c', '#172e34', '#36283b'][seed % 4],
+      difficulty: `${bends > 5 ? '하드' : bends > 3 ? '노멀' : '이지'} · ${bends}개 굴곡`,
+      target: length / 36,
+      points: points(49, (t) => [
+        Math.sin(t * Math.PI * bends) * amplitude +
+          Math.sin(t * Math.PI * (bends + 2)) * v * 3,
+        7 +
+          Math.sin(t * Math.PI) * (hill ? 25 + (seed % 35) : 5) +
+          Math.sin(t * Math.PI * 4) * (hill ? 7 : 1),
+        -t * length,
+      ]),
+      landmarks: base.landmarks.map((l) => ({ ...l })),
+    });
+  }
 export class Course {
   curve: CatmullRomCurve3;
   length: number;
@@ -123,6 +188,10 @@ export class Course {
     return Math.atan2(a.x * b.z - a.z * b.x, a.x * b.x + a.z * b.z) / 16;
   }
 }
-export const COURSES = ROUTES.map((r) => new Course(r));
-export const getCourse = (id: RouteId) =>
-  COURSES.find((c) => c.config.id === id) || COURSES[0];
+const cache = new Map<string, Course>();
+export const getCourse = (id: RouteId): Course => {
+  const config = ROUTES.find((r) => r.id === id) || ROUTES[0];
+  if (!cache.has(config.id)) cache.set(config.id, new Course(config));
+  return cache.get(config.id)!;
+};
+export const COURSES = ROUTES.slice(0, 3).map((r) => getCourse(r.id));

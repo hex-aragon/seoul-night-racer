@@ -145,8 +145,8 @@ export class TrackWorld {
   }
   private build() {
     const { config, length } = this.course;
-    const bridge = config.id === 'hangang';
-    const mountain = config.id === 'namsan';
+    const bridge = config.id === 'hangang' || config.theme === 'river';
+    const mountain = config.id === 'namsan' || config.theme === 'hill';
     const road = new T.MeshPhysicalMaterial({
       color: '#111c2a',
       roughness: 0.42,
@@ -263,7 +263,9 @@ export class TrackWorld {
           continue;
         }
         const width = 10 + random(index) * 12,
-          height = 18 + random(index + 5) * 72;
+          height =
+            (18 + random(index + 5 + (config.seed || 0)) * 72) *
+            (config.heightScale || 1);
         const building = this.placed(s, side * (25 + width / 2));
         this.box(
           building,

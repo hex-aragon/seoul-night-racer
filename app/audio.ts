@@ -82,6 +82,7 @@ export class DriveAudio {
     throttle: boolean,
     boost: boolean,
     mode: string,
+    driveRpm?: number,
   ) {
     if (!this.ctx) return;
     const c = this.ctx;
@@ -103,9 +104,10 @@ export class DriveAudio {
     }
     const low = (gear - 1) * 46,
       rpm =
-        gear === 1
+        driveRpm ??
+        (gear === 1
           ? 1000 + Math.min(1, speed / 46) * 6400
-          : 4200 + Math.max(0, Math.min(1, (speed - low) / 46)) * 3200;
+          : 4200 + Math.max(0, Math.min(1, (speed - low) / 46)) * 3200);
     const shift = c.currentTime < this.shiftUntil ? 0.76 : 1;
     this.oscillators[0].frequency.setTargetAtTime(
       (rpm / 60) * 4 * shift,

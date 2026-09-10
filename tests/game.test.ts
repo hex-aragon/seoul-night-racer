@@ -1,6 +1,7 @@
+import { newDrive, stepDrive, selectGear } from '../app/drivetrain';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { COURSES, getCourse } from '../app/routes';
+import { COURSES, ROUTES, getCourse } from '../app/routes';
 import {
   awardRun,
   blankProfile,
@@ -94,6 +95,9 @@ function fixture() {
       speed: 160,
       distance: 100,
     },
+    drive: { ...newDrive(), velocity: 160 },
+    steeringInput: 0,
+    furthest: 0,
     course: getCourse('hangang'),
     keys: new Set(),
     x: 0,
@@ -138,4 +142,68 @@ test('curve forces move lateral position and can be countersteered', () => {
   const before = e.x;
   e.simulate(0.025);
   assert.notEqual(e.x, before);
+});
+
+test('123 distinct urban courses have finite geometry and persistent records', () => {
+  assert.equal(ROUTES.length, 123);
+  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 123);
+  for (const route of ROUTES) {
+    const c = getCourse(route.id);
+    assert(c.length > 2000);
+    assert(Number.isFinite(c.sample(c.length / 2).position.y));
+  }
+  const p = blankProfile();
+  p.settings.route = 'city-120';
+  p.settings.transmission = 'manual';
+  p.records['city-120'] = { bestTime: 80, stars: 2, attempts: 1, finishes: 1 };
+  assert.deepEqual(parseProfile(JSON.stringify(p)), p);
+});
+test('brakes stop both directions, unsafe selector changes are refused, neutral coasts and P locks', () => {
+  const d = newDrive();
+  for (let i = 0; i < 100; i++) stepDrive(d, true, false, 0.025);
+  assert(d.velocity > 0);
+  assert(!selectGear(d, 'R'));
+  assert(!selectGear(d, 'P'));
+  assert(selectGear(d, 'N'));
+  const v = d.velocity;
+  stepDrive(d, true, false, 0.1);
+  assert(d.velocity < v);
+  for (let i = 0; i < 100; i++) stepDrive(d, false, true, 0.025);
+  assert.equal(d.velocity, 0);
+  assert(selectGear(d, 'R'));
+  stepDrive(d, true, false, 1);
+  assert(d.velocity < 0);
+  assert(d.velocity >= -28);
+  stepDrive(d, false, true, 1);
+  assert.equal(Math.abs(d.velocity), 0);
+  assert(selectGear(d, 'P'));
+  stepDrive(d, true, false, 1);
+  assert.equal(d.velocity, 0);
+});
+test('manual gear limits speed until shifted, auto upshifts, steering cannot move parked car', () => {
+  const d = newDrive();
+  d.transmission = 'manual';
+  for (let i = 0; i < 100; i++) stepDrive(d, true, false, 0.1);
+  assert.equal(d.gear, 1);
+  assert.equal(d.velocity, 46);
+  d.gear = 2;
+  for (let i = 0; i < 100; i++) stepDrive(d, true, false, 0.1);
+  assert.equal(d.velocity, 92);
+  d.transmission = 'auto';
+  stepDrive(d, true, false, 0.1);
+  assert.equal(d.gear, 3);
+  const { e } = fixture();
+  e.drive = { ...newDrive(), selector: 'P' };
+  e.keys.add('arrowleft');
+  e.simulate(0.1);
+  assert.equal(e.x, 0);
+});
+test('reverse reduces course position without adding forward distance', () => {
+  const { e } = fixture();
+  e.drive = { ...newDrive(), selector: 'R', velocity: -15 };
+  e.furthest = 100;
+  e.keys.add('w');
+  e.simulate(0.1);
+  assert(e.state.distance < 100);
+  assert.equal(e.furthest, 100);
 });
