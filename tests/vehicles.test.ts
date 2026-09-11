@@ -1,3 +1,5 @@
+import { prepareStaticGeometry } from '../app/track-world';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
@@ -124,4 +126,21 @@ test('congestion stops then releases a queue and work-zone traffic merges or wai
     });
   assert.equal(truck.x, 4);
   assert(truck.z > 439);
+});
+
+test('mixed procedural truck and primitive worksite geometry batches without attribute errors', () => {
+  const mesh = buildVehicle(
+    { id: 'dump', ...TRAFFIC_BODIES[5] },
+    new T.MeshStandardMaterial(),
+  );
+  mesh.updateMatrixWorld(true);
+  const geometries: T.BufferGeometry[] = [];
+  mesh.traverse((o) => {
+    if (o instanceof T.Mesh) geometries.push(prepareStaticGeometry(o));
+  });
+  const merged = mergeGeometries(geometries);
+  assert(merged);
+  assert(merged.getAttribute('position').count > 100);
+  geometries.forEach((g) => g.dispose());
+  merged.dispose();
 });

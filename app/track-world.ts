@@ -7,6 +7,21 @@ const random = (n: number) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
+/** Normalize procedural and primitive meshes before static batching. */
+export function prepareStaticGeometry(mesh: T.Mesh) {
+  const geo = mesh.geometry.index
+    ? mesh.geometry.toNonIndexed()
+    : mesh.geometry.clone();
+  if (!geo.getAttribute('uv'))
+    geo.setAttribute(
+      'uv',
+      new T.Float32BufferAttribute(
+        new Float32Array(geo.getAttribute('position').count * 2),
+        2,
+      ),
+    );
+  return geo.applyMatrix4(mesh.matrixWorld);
+}
 export class TrackWorld {
   root = new T.Group();
   private materials = new Map<string, T.Material>();
@@ -882,9 +897,7 @@ export class TrackWorld {
         }
       });
       for (const [mat, meshes] of groups) {
-        const geos = meshes.map((m) =>
-          m.geometry.clone().applyMatrix4(m.matrixWorld),
-        );
+        const geos = meshes.map(prepareStaticGeometry);
         const geo = mergeGeometries(geos);
         geos.forEach((g) => g.dispose());
         if (geo) {
