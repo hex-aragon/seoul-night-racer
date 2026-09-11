@@ -1,5 +1,6 @@
 import {
   newDrive,
+  consumeFuel,
   stepDrive,
   selectGear,
   type Selector,
@@ -26,6 +27,10 @@ export type Snapshot = {
   transmission: Transmission;
   rpm: number;
   steering: number;
+  fuel: number;
+  bearing: number;
+  throttle: boolean;
+  braking: boolean;
   distance: number;
   time: number;
   nitro: number;
@@ -56,6 +61,10 @@ export const initial = (route: RouteId = 'hangang'): Snapshot => ({
   transmission: 'auto',
   rpm: 900,
   steering: 0,
+  fuel: 100,
+  bearing: 0,
+  throttle: false,
+  braking: false,
   distance: 0,
   time: 0,
   nitro: 100,
@@ -96,7 +105,7 @@ export class RaceEngine {
   keys = new Set<string>();
   drive = newDrive();
   peaceful = true;
-  cruise = true;
+  cruise = false;
   daylight = true;
   configureExperience = (
     daylight: boolean,
@@ -506,17 +515,26 @@ export class RaceEngine {
     this.update({ ...this.state });
   };
   setColor = (color: string) => this.paint.color.set(color);
-  changeCamera = () => {
-    this.state.camera = (this.state.camera + 1) % 2;
+  setCamera = (camera: number) => {
+    this.state.camera = camera === 1 ? 1 : 0;
     this.snapCamera();
     this.update({ ...this.state });
+  };
+  changeCamera = () => this.setCamera((this.state.camera + 1) % 2);
+  refuel = () => {
+    if (this.state.speed > 1) return false;
+    this.state.fuel = 100;
+    this.state.rpm = 900;
+    this.drive.rpm = 900;
+    this.update({ ...this.state });
+    return true;
   };
   private snapCamera() {
     const f = this.course.sample(this.state.distance, this.x);
     this.camera.position
       .copy(f.position)
-      .addScaledVector(f.tangent, this.state.camera ? 1.6 : -7);
-    this.camera.position.y += this.state.camera ? 1.3 : 2.2;
+      .addScaledVector(f.tangent, this.state.camera ? 1.6 : -12);
+    this.camera.position.y += this.state.camera ? 1.35 : 4.6;
   }
   private keydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -588,12 +606,16 @@ export class RaceEngine {
     if (s.mode !== 'racing') return;
     s.time += dt;
     const gas =
-        k.has('w') ||
-        k.has('arrowup') ||
-        (this.cruise &&
-          this.drive.selector === 'D' &&
-          Math.abs(this.drive.velocity) < (this.peaceful ? 68 : 110)),
+        s.fuel > 0 &&
+        (k.has('w') ||
+          k.has('arrowup') ||
+          (this.cruise &&
+            this.drive.selector === 'D' &&
+            Math.abs(this.drive.velocity) < (this.peaceful ? 68 : 110))),
       brake = k.has('s') || k.has('arrowdown');
+    s.throttle = gas;
+    s.braking = brake;
+    s.fuel = consumeFuel(s.fuel, s.speed, gas && !brake, dt);
     s.boost = false;
     stepDrive(this.drive, gas, brake, dt);
     if (this.peaceful)
@@ -603,7 +625,7 @@ export class RaceEngine {
     s.gear = this.drive.gear;
     s.selector = this.drive.selector;
     s.transmission = this.drive.transmission;
-    s.rpm = this.drive.rpm;
+    s.rpm = s.fuel > 0 ? this.drive.rpm : 0;
     s.maxSpeed = Math.max(s.maxSpeed, s.speed);
     const input =
       this.steeringInput +
@@ -619,6 +641,8 @@ export class RaceEngine {
     s.steering = this.steer;
     s.offset = this.x;
     s.curve = curve;
+    s.bearing =
+      (360 - (this.course.sample(s.distance).heading * 180) / Math.PI) % 360;
     if (Math.abs(this.x) > 10.2 && s.speed > 15) {
       this.x = clamp(this.x, -10.2, 10.2);
       if (this.peaceful) {
@@ -737,6 +761,7 @@ export class RaceEngine {
     const ready = s.mode === 'ready',
       hood = s.camera === 1 && !ready,
       narrow = this.camera.aspect < 0.8;
+    this.player.visible = !hood;
     const desired = f.position
       .clone()
       .addScaledVector(
@@ -748,11 +773,11 @@ export class RaceEngine {
               ? -1.6
               : 1.6
             : s.selector === 'R'
-              ? 6.6
-              : -6.6,
+              ? 12
+              : -12,
       );
     desired.addScaledVector(f.right, ready ? 6 : 0);
-    desired.y += ready ? 2.3 : hood ? 1.3 : 2.2;
+    desired.y += ready ? 2.3 : hood ? 1.35 : 4.6;
     this.camera.position.lerp(desired, 1 - Math.exp(-dt * 6));
     const target = ready
       ? f.position.clone().addScaledVector(f.right, narrow ? 0 : -2.2)
@@ -764,7 +789,7 @@ export class RaceEngine {
     this.camera.lookAt(target);
     this.camera.fov = T.MathUtils.damp(
       this.camera.fov,
-      ready ? 46 : hood ? 78 : 58 + s.speed * 0.043 + (s.boost ? 5 : 0),
+      ready ? 46 : hood ? 72 : 54 + s.speed * 0.025 + (s.boost ? 5 : 0),
       4,
       dt,
     );
@@ -792,7 +817,7 @@ export class RaceEngine {
     this.audio.update(
       s.speed,
       s.gear,
-      this.keys.has('w') || this.keys.has('arrowup'),
+      s.throttle && !s.braking,
       s.boost,
       s.mode,
       s.rpm,

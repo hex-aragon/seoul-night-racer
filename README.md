@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 05
+# Seoul / Midnight Run — Chapter 06
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -16,12 +16,12 @@ All 123 maps are available immediately: the three landmark routes plus 120 deter
 
 - WASD / arrow keys: accelerate, brake, steer
 - Q / E: shift down / up in manual mode
-- C: chase / hood camera
+- Two visible camera buttons (or C): distant chase view / windshield view
 - P / Escape: pause
 - Enter: start / restart
-- Mouse / touch: drag the scene horizontally to steer, up for throttle, down for brake; double-tap to open settings
+- Mouse / touch: drag the visible steering wheel and hold the accelerator / brake pedals. Simultaneous touch is supported. Scene drag gestures remain available.
 - AT / MT: automatic or sequential manual 1–7 speed transmission
-- P / R / N / D selector buttons in settings: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
+- P / R / N / D selector buttons on the instrument panel: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
 - Runs start 20 m into the route, allowing a short reverse maneuver. Route boundaries limit travel; these are road courses, not an open-world parking simulator.
 - Settings button in the garage / Escape while driving: adjust BGM and engine volume
 
@@ -61,8 +61,12 @@ Tests cover course continuity, curve forces, collision and finish outcomes, once
 
 `app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions, free steering through parking lots and selectable EV/Tesla models are future work; P currently locks the vehicle, not a parking minigame. No Tesla or EV vehicle is presented as playable.
 
-## Quiet driving experience
+## Driver-focused interface
 
-Driving shows only the 3D world: no HUD, score, steering wheel panel, map, branding or footer. Double-tap/click the scenery or press Escape to pause and open settings (keyboard users can also Tab to the settings action). Drag horizontally to steer, upward for throttle and downward for brake; releasing clears gesture controls. Settings contain daylight/night, peaceful/racing mode, cruise assist, sound, camera, transmission, map and local progress. The native modal traps focus and resumes the canvas on close.
+A compact bottom panel holds the wheel, accelerator, brake, speed, compass heading, forward/reverse gear, fuel gauge and AT/MT selection. No score, minimap, timer, branding or footer overlays the driving view. The two top camera buttons select a distant chase view (12 m behind and 4.6 m high) or windshield view (the car exterior is hidden). The settings icon or Escape pauses driving and opens the settings modal; double-tapping scenery also opens it.
 
-Daylight adjusts sky, fog, hemisphere/sun lighting and window emissions; night restores illuminated scenery. Peaceful mode defaults to a road-facing camera with gentle ~68 km/h cruise, corner assistance and forgiving collisions. Racing is still selectable. Peaceful finishes earn distance/exploration XP but do not set competitive best times.
+Daylight adjusts sky, fog, sun lighting and building glass textures; night restores illuminated scenery. Peaceful mode offers forgiving collisions and gentle curve assistance. Manual pedals are the default, including a one-time migration of the earlier auto-cruise default. Optional cruise and other settings persist locally. Racing mode is still selectable.
+
+Fuel is a game-scaled percentage, not a real Ferrari consumption estimate. Idling, travel and acceleration consume fuel. Below 20%, the panel shows a low-fuel indicator and a refuel button. At zero, engine audio cuts out and the car coasts to a stop; braking continues to work. Refuelling is available only below 1 km/h and restores the tank. A new drive starts with full fuel. Fuel consumption and position freeze while paused.
+
+Tests cover fuel consumption/depletion and default migration in addition to drivetrain, collisions and progression. Browser validation covers visible controls, both cameras, braking, refuelling, reverse, settings, 320px layout and simultaneous touch with cancellation.

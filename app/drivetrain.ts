@@ -79,3 +79,17 @@ export function stepDrive(
             (gas && !engaged ? 3500 : 0),
         );
 }
+
+/** Arcade fuel percentage, scaled for a short browser drive rather than real-world litres. */
+export function consumeFuel(
+  fuel: number,
+  speed: number,
+  throttle: boolean,
+  dt: number,
+) {
+  return Math.max(
+    0,
+    fuel -
+      (0.006 + (Math.abs(speed) / 3.6) * 0.012 + (throttle ? 0.06 : 0)) * dt,
+  );
+}

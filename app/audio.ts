@@ -94,7 +94,9 @@ export class DriveAudio {
       0.2,
     );
     this.engineBus!.gain.setTargetAtTime(
-      active ? this.engineVolume * (throttle ? 0.65 : 0.34) : 0,
+      active && driveRpm !== 0
+        ? this.engineVolume * (throttle ? 0.65 : 0.34)
+        : 0,
       c.currentTime,
       0.08,
     );

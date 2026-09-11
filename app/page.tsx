@@ -98,7 +98,8 @@ export default function Home() {
     engine = useRef<RaceEngine | null>(null),
     profileRef = useRef(blankProfile()),
     gesture = useRef({ x: 0, y: 0, moved: false, lastTap: 0 }),
-    dialog = useRef<HTMLDialogElement>(null);
+    dialog = useRef<HTMLDialogElement>(null),
+    wheelStart = useRef(0);
   const [hud, setHud] = useState(() => initial()),
     [profile, setProfile] = useState(blankProfile),
     [reward, setReward] = useState<ReturnType<typeof awardRun> | null>(null),
@@ -184,6 +185,27 @@ export default function Home() {
     engine.current?.selectRoute(id);
     settings({ route: id });
     setReward(null);
+  };
+  const pedal = (key: string) => ({
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      engine.current?.keys.add(key);
+    },
+    onPointerUp: () => engine.current?.keys.delete(key),
+    onPointerCancel: () => engine.current?.keys.delete(key),
+    onLostPointerCapture: () => engine.current?.keys.delete(key),
+    onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        engine.current?.keys.add(key);
+      }
+    },
+    onKeyUp: () => engine.current?.keys.delete(key),
+    onBlur: () => engine.current?.keys.delete(key),
+  });
+  const centerWheel = () => {
+    if (engine.current) engine.current.steeringInput = 0;
   };
   const filtered = ROUTES.filter((r) =>
     `${r.name} ${r.subtitle} ${r.difficulty}`.includes(query.trim()),
@@ -290,11 +312,19 @@ export default function Home() {
       </fieldset>
       <details>
         <summary>시점 · 변속 · 조작 방법</summary>
+        <p>연료 {hud.fuel.toFixed(1)}% · 게임 주행량 기준</p>
+        <button
+          className="setting-camera"
+          disabled={hud.speed > 1}
+          onClick={() => engine.current?.refuel()}
+        >
+          정차 후 주유
+        </button>
         <button
           className="setting-camera"
           onClick={() => engine.current?.changeCamera()}
         >
-          시점: {hud.camera === 1 ? '도로 바라보기' : '차량 뒤에서 보기'} · 변경
+          시점: {hud.camera === 1 ? '앞유리 시점' : '멀리서 보기'} · 변경
         </button>
         <div className="choice-row">
           <button
@@ -379,12 +409,223 @@ export default function Home() {
         onLostPointerCapture={releaseGesture}
       />
       {hud.mode === 'racing' && (
-        <button
-          className="invisible-settings"
-          onClick={() => engine.current?.pause()}
-        >
-          드라이브 설정 열기
-        </button>
+        <>
+          {hud.camera === 1 && (
+            <div className="windshield-frame" aria-hidden="true" />
+          )}
+          <nav className="drive-toolbar" aria-label="주행 시점과 설정">
+            <div className="view-switch">
+              <button
+                aria-pressed={hud.camera === 0}
+                onClick={() => engine.current?.setCamera(0)}
+              >
+                멀리서 보기
+              </button>
+              <button
+                aria-pressed={hud.camera === 1}
+                onClick={() => engine.current?.setCamera(1)}
+              >
+                앞유리 시점
+              </button>
+            </div>
+            <button
+              className="drive-menu"
+              aria-label="드라이브 설정 열기"
+              onClick={() => engine.current?.pause()}
+            >
+              <Settings2 size={19} />
+            </button>
+          </nav>
+          <section className="driver-dash" aria-label="운전 조작부">
+            <div className="driver-wheel">
+              <div
+                className="steering-wheel"
+                role="slider"
+                tabIndex={0}
+                aria-label="핸들"
+                aria-valuemin={-100}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(hud.steering * 100)}
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                  wheelStart.current = e.clientX;
+                }}
+                onPointerMove={(e) => {
+                  if (
+                    e.currentTarget.hasPointerCapture(e.pointerId) &&
+                    engine.current
+                  )
+                    engine.current.steeringInput = Math.max(
+                      -1,
+                      Math.min(1, (e.clientX - wheelStart.current) / 65),
+                    );
+                }}
+                onPointerUp={centerWheel}
+                onPointerCancel={centerWheel}
+                onLostPointerCapture={centerWheel}
+                onBlur={centerWheel}
+              >
+                <svg
+                  viewBox="0 0 160 160"
+                  style={{ transform: `rotate(${hud.steering * 110}deg)` }}
+                  aria-hidden="true"
+                >
+                  <circle cx="80" cy="80" r="63" />
+                  <path d="M20 70 L65 80 M140 70 L95 80 M80 96 L80 143" />
+                  <circle className="wheel-hub" cx="80" cy="80" r="24" />
+                  <path className="wheel-mark" d="M80 12 L80 27" />
+                </svg>
+              </div>
+              <span>
+                핸들 <small>A / D</small>
+              </span>
+            </div>
+            <div className="instrument-cluster">
+              <div className="instrument-main">
+                <div className="driver-speed">
+                  <strong>
+                    {Math.round(hud.speed).toString().padStart(2, '0')}
+                  </strong>
+                  <small>km/h</small>
+                </div>
+                <div className="drive-direction">
+                  <b>{hud.selector === 'D' ? `D${hud.gear}` : hud.selector}</b>
+                  <span>
+                    {hud.selector === 'R'
+                      ? '후진'
+                      : hud.selector === 'P'
+                        ? '주차 잠금'
+                        : hud.selector === 'N'
+                          ? '중립'
+                          : '전진'}{' '}
+                    ·{' '}
+                    {
+                      [
+                        '북 N',
+                        '북동 NE',
+                        '동 E',
+                        '남동 SE',
+                        '남 S',
+                        '남서 SW',
+                        '서 W',
+                        '북서 NW',
+                      ][Math.round(hud.bearing / 45) % 8]
+                    }
+                  </span>
+                </div>
+              </div>
+              <div className="fuel-indicator" data-low={hud.fuel <= 20}>
+                <label>
+                  <span>연료</span>
+                  <b>{hud.fuel.toFixed(1)}%</b>
+                </label>
+                <div
+                  role="meter"
+                  aria-label="남은 연료"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={hud.fuel}
+                >
+                  <i style={{ width: `${hud.fuel}%` }} />
+                </div>
+              </div>
+              <div className="drive-gear-row">
+                {(['P', 'R', 'N', 'D'] as const).map((g) => (
+                  <button
+                    key={g}
+                    aria-label={
+                      {
+                        P: '주차 잠금 P',
+                        R: '후진 R',
+                        N: '중립 N',
+                        D: '전진 D',
+                      }[g]
+                    }
+                    aria-pressed={hud.selector === g}
+                    disabled={hud.speed > 1 && g !== hud.selector && g !== 'N'}
+                    onClick={() => engine.current?.selectGear(g)}
+                  >
+                    {g}
+                  </button>
+                ))}
+                <button
+                  className="at-mt"
+                  aria-label="자동 수동 변속 전환"
+                  onClick={() =>
+                    settings({
+                      transmission:
+                        profile.settings.transmission === 'auto'
+                          ? 'manual'
+                          : 'auto',
+                    })
+                  }
+                >
+                  {profile.settings.transmission === 'auto' ? 'AT' : 'MT'}
+                </button>
+              </div>
+              {profile.settings.transmission === 'manual' && (
+                <div className="dash-shift">
+                  <button
+                    aria-label="기어 내리기"
+                    disabled={hud.selector !== 'D'}
+                    onClick={() => engine.current?.shift(-1)}
+                  >
+                    −
+                  </button>
+                  <span>{hud.gear}단 · Q / E</span>
+                  <button
+                    aria-label="기어 올리기"
+                    disabled={hud.selector !== 'D'}
+                    onClick={() => engine.current?.shift(1)}
+                  >
+                    ＋
+                  </button>
+                </div>
+              )}
+              {hud.fuel <= 20 ? (
+                <div className="fuel-help" role="status">
+                  <span>
+                    {hud.fuel === 0 ? '연료 소진 · 정차 후 주유' : '연료 부족'}
+                  </span>
+                  <button
+                    disabled={hud.speed > 1}
+                    onClick={() => engine.current?.refuel()}
+                  >
+                    주유
+                  </button>
+                </div>
+              ) : (
+                <small className="driver-hint">
+                  {profile.settings.cruise
+                    ? '정속 주행 켜짐'
+                    : hud.speed > 1
+                      ? '방향 전환은 정차 후'
+                      : '액셀을 밟아 출발하세요'}
+                </small>
+              )}
+            </div>
+            <div className="pedals driver-pedals">
+              <button
+                className="brake-pedal"
+                data-pressed={hud.braking}
+                {...pedal('arrowdown')}
+              >
+                <i />
+                <strong>브레이크</strong>
+                <small>S / ↓</small>
+              </button>
+              <button
+                className="gas-pedal"
+                data-pressed={hud.throttle && !hud.braking}
+                {...pedal('arrowup')}
+              >
+                <i />
+                <strong>액셀</strong>
+                <small>W / ↑</small>
+              </button>
+            </div>
+          </section>
+        </>
       )}
       <div className="grain" />
       <header className="topbar">
@@ -502,8 +743,7 @@ export default function Home() {
               <ArrowUpRight size={22} />
             </button>
             <div className="enter-hint">
-              {hud.error ||
-                '좌우 드래그로 조향 · 위/아래로 액셀/브레이크 · 두 번 탭 또는 ESC로 설정'}
+              {hud.error || '하단 핸들·페달로 운전 · 카메라 버튼으로 시점 전환'}
             </div>
           </section>
           <section className="route-picker" aria-label="맵 선택">

@@ -1,4 +1,9 @@
-import { newDrive, stepDrive, selectGear } from '../app/drivetrain';
+import {
+  newDrive,
+  stepDrive,
+  selectGear,
+  consumeFuel,
+} from '../app/drivetrain';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COURSES, ROUTES, getCourse } from '../app/routes';
@@ -231,9 +236,34 @@ test('experience settings migrate to quiet daytime defaults and persist explicit
   const p = parseProfile(
     JSON.stringify({ version: 1, settings: { route: 'hangang' } }),
   );
-  assert(p.settings.daylight && p.settings.peaceful && p.settings.cruise);
+  assert(p.settings.daylight && p.settings.peaceful && !p.settings.cruise);
   p.settings.daylight = false;
   p.settings.peaceful = false;
   p.settings.cruise = false;
   assert.deepEqual(parseProfile(JSON.stringify(p)), p);
+});
+
+test('fuel is consumed by travel and throttle and never goes negative', () => {
+  assert(consumeFuel(100, 80, true, 1) < consumeFuel(100, 0, false, 1));
+  assert.equal(consumeFuel(0.001, 120, true, 1), 0);
+  const { e } = fixture();
+  e.state.fuel = 0;
+  e.drive.velocity = 50;
+  e.cruise = true;
+  e.keys.add('w');
+  e.simulate(0.1);
+  assert(e.state.speed < 50);
+  assert.equal(e.state.rpm, 0);
+  assert.equal(e.state.fuel, 0);
+  for (let i = 0; i < 250; i++) e.simulate(0.025);
+  assert.equal(e.state.speed, 0);
+  assert.equal(e.state.mode, 'racing');
+});
+test('manual pedal default migrates once and explicit cruise preference survives', () => {
+  const p = parseProfile(
+    JSON.stringify({ version: 1, settings: { cruise: true } }),
+  );
+  assert.equal(p.settings.cruise, false);
+  p.settings.cruise = true;
+  assert.equal(parseProfile(JSON.stringify(p)).settings.cruise, true);
 });

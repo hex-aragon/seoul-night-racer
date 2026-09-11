@@ -33,6 +33,7 @@ export type Profile = {
     daylight: boolean;
     peaceful: boolean;
     cruise: boolean;
+    controlsVersion: 2;
   };
 };
 export const blankProfile = (): Profile => ({
@@ -51,7 +52,8 @@ export const blankProfile = (): Profile => ({
     transmission: 'auto',
     daylight: true,
     peaceful: true,
-    cruise: true,
+    cruise: false,
+    controlsVersion: 2,
   },
 });
 const nonnegative = (x: unknown, fallback = 0) =>
@@ -98,7 +100,8 @@ export function parseProfile(raw: string | null): Profile {
       d.settings?.transmission === 'manual' ? 'manual' : 'auto';
     p.settings.daylight = d.settings?.daylight !== false;
     p.settings.peaceful = d.settings?.peaceful !== false;
-    p.settings.cruise = d.settings?.cruise !== false;
+    p.settings.cruise =
+      d.settings?.controlsVersion === 2 && d.settings?.cruise === true;
     return p;
   } catch {
     return p;
