@@ -61,3 +61,7 @@ credentials.json
 service-account.json
 .vercel/
 .wrangler/
+
+# Blender incremental backup files
+*.blend1
+*.blend2

@@ -80,3 +80,7 @@ These adapted assets retain their individual licenses. Porsche adaptations remai
 Changes: glTF Transform optimization, Draco geometry compression, WebP textures up to 1024px, mesh simplification (0.65 ratio, 0.0005 error), scale/orientation normalization, showroom lighting and customizable paint materials. Porsche ground plane, Toyota shadow plane, and the duplicate Lincoln display car removed at runtime. Embedded original credits are preserved. File integrity hashes are in `showroom/manifest.json`. BMW source already excluded hidden interior meshes and reduced textures.
 
 Traffic bodies remain original procedural geometry. Vehicle names and marks identify depicted cars; this project is not affiliated with or endorsed by manufacturers. Performance figures are fictional game tuning.
+
+## Environment assets
+
+See [Blender street kit and daylight HDRI credits](street/ATTRIBUTION.md).

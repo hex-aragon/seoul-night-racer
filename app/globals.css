@@ -2996,3 +2996,7 @@ input:focus-visible {
 @media(max-height:700px) and (min-width:701px){.showroom-title{top:80px}.showroom-title h1{font-size:31px}.showroom-touch{top:140px;bottom:205px}.trip-tray{height:130px;bottom:22px}.showroom-paint{bottom:165px}.showroom-paint>span{display:none}.destination-card,.depart-button{height:74px}}
 
 .showroom-title h1{text-shadow:none}
+
+.signal-pill{position:absolute;top:78px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:9px;padding:9px 15px;background:#10212ce8;border:1px solid #ffffff26;border-radius:24px;color:#fff;font-size:13px;box-shadow:0 4px 16px #0003;pointer-events:none}.signal-pill i{width:10px;height:10px;border-radius:50%;background:#39e19a;box-shadow:0 0 10px currentColor}.signal-pill.red i{background:#ff565c}.signal-pill.amber i{background:#ffca55}.signal-pill span{font-size:11px;color:#d8e1e6}@media(max-width:700px){.signal-pill{top:70px;font-size:11px;padding:7px 12px}}
+
+@media(max-width:700px){.game-shell:has(.race-ribbon) .signal-pill{top:115px}}

@@ -1,3 +1,4 @@
+import { signalSpeedLimit, type Crossing } from './signals';
 export type TrafficScenario = 'free' | 'works' | 'busy';
 export type TrafficMotion = {
   body?: number;
@@ -101,6 +102,7 @@ export function stepTraffic(
     start: number;
     end: number;
     time: number;
+    crossings?: Crossing[];
   },
 ) {
   v.elapsed += dt;
@@ -176,6 +178,18 @@ export function stepTraffic(
       );
   if (player.z > v.z && player.z - v.z < 28 && Math.abs(player.x - v.x) < 2.4)
     speed = Math.min(speed, player.speed);
+  if (environment?.crossings)
+    speed = Math.min(
+      speed,
+      signalSpeedLimit(
+        v.z,
+        v.length || 4.6,
+        v.actualSpeed ?? v.speed,
+        environment.crossings,
+        environment.time,
+      ),
+    );
+  speed = Math.min(speed, (v.actualSpeed ?? v.speed) + 2.6 * dt);
   v.actualSpeed = speed;
   v.z += speed * dt;
 }

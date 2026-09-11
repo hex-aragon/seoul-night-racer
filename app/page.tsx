@@ -246,13 +246,11 @@ export default function Home() {
       ].id,
     );
   useEffect(() => {
-    document
-      .querySelector('.brand-tab[aria-pressed="true"]')
-      ?.scrollIntoView({
-        block: 'nearest',
-        inline: 'center',
-        behavior: 'smooth',
-      });
+    document.querySelector('.brand-tab[aria-pressed="true"]')?.scrollIntoView({
+      block: 'nearest',
+      inline: 'center',
+      behavior: 'smooth',
+    });
   }, [vehicle.id]);
   const preferences = () => (
     <div className="preferences">
@@ -464,6 +462,16 @@ export default function Home() {
         onPointerCancel={releaseGesture}
         onLostPointerCapture={releaseGesture}
       />
+      {import.meta.env.DEV &&
+        new URLSearchParams(location.search).has('qa') &&
+        hud.mode === 'ready' && (
+          <button
+            style={{ position: 'absolute', top: 80, right: 20, zIndex: 100 }}
+            onClick={() => engine.current?.previewCrossing()}
+          >
+            신호등 테스트
+          </button>
+        )}
       {hud.mode === 'racing' && (
         <>
           {hud.camera === 1 && (
@@ -492,6 +500,19 @@ export default function Home() {
               <Settings2 size={19} />
             </button>
           </nav>
+          {hud.signal && (
+            <div className={'signal-pill ' + hud.signal.phase} role="status">
+              <i />
+              {hud.signal.phase === 'red'
+                ? '정지'
+                : hud.signal.phase === 'amber'
+                  ? '감속'
+                  : '진행'}{' '}
+              <span>
+                {hud.signal.distance}m · {hud.signal.remaining}초
+              </span>
+            </div>
+          )}
           {!profile.settings.peaceful && (
             <div className="race-ribbon">
               <b className={hud.timeLeft < 20 ? 'urgent' : ''}>

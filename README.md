@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 10
+# Seoul / Midnight Run — Chapter 11
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -89,3 +89,11 @@ Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, a
 Each route offers everyday traffic, roadworks or rush-hour congestion, with a recommended condition attached to featured destinations. Roadworks close the right lane with cones, warning boards, parked dump trucks, workers and excavators. Traffic signals and merges left or waits for a gap before the closure. Congestion creates a slow queue that stops and starts; extra time is added to timed challenges. Player controls and collision behavior remain active in both situations.
 
 Incheon adds airport scenery, city buildings and a bridge; East Coast adds a coastal railway and rock formations; Busan adds beach umbrellas, towers and a bridge; Jeju adds stone walls and palms; Namhae adds tiled-roof houses; Seorak adds mountain rock formations. Existing birch forest, tree avenues, pasture sheep and wind turbines remain. Road geometry and scenery reinterpret the places for a game.
+
+## Blender street kit and working crossings
+
+The original Blender-made signal masts, sun visors, pedestrian signals, glass shelters, timber benches and branching trees replace bare street furniture and simple spherical trees. Source `.blend` files and the reproducible script are in `art/`. The three GLBs total roughly 525 KB; tree meshes use GPU instancing. Asphalt aggregate is authored in Blender. A CC0 Poly Haven HDRI supplies the daytime sky and outdoor reflections, with local sun shadows; the night palette and car showroom retain separate lighting. See `public/models/street/ATTRIBUTION.md`. Higgsfield installation was approved but its connection was not completed; no Higgsfield assets are claimed or bundled.
+
+All 133 fictional routes have crossings, placed outside bridge decks, work zones, landmarks and the finish. White zebra stripes, stop lines, tactile pavers, bollards and gaps in guardrails mark the crossing. Vehicle signals run 18 seconds green, 3 amber, 11 red. Pedestrian lights have clearance intervals and never show walk alongside vehicle green. Cars, trucks and motorcycles brake before the line and accelerate on green. Vehicles already committed on amber clear the crossing. Player pedals remain under manual control; the compact signal indicator shows phase, distance and remaining seconds. The race countdown pauses while stopped within 22 m of a red/amber stop line; pause freezes the signal clock. Signal compliance is not a hard collision or automatic restart rule.
+
+Browser verification uses the development-only `?qa` crossing preview button; it is stripped from production. Rebuild the original kit with `/Applications/Blender.app/Contents/MacOS/Blender --background --python art/build_street.py` on macOS (or your Blender executable on other platforms).

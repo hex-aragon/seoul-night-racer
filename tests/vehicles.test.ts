@@ -97,6 +97,14 @@ test('congestion stops then releases a queue and work-zone traffic merges or wai
     end: 800,
     time: 11,
   });
+  assert.ok(car.actualSpeed! > 0 && car.actualSpeed! < 1);
+  for (let i = 0; i < 100; i++)
+    stepTraffic(car, 0.025, [car], player, random, {
+      scenario: 'busy',
+      start: 450,
+      end: 800,
+      time: 11,
+    });
   assert.equal(car.actualSpeed, 5);
   const truck = {
     ...createMotion(2, random),

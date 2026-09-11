@@ -1,3 +1,4 @@
+import { StreetScene } from './street-scene';
 import { buildVehicle, TRAFFIC_BODIES } from './vehicle-model';
 import type { TrafficScenario } from './traffic';
 import * as T from 'three';
@@ -24,6 +25,7 @@ export function prepareStaticGeometry(mesh: T.Mesh) {
 }
 export class TrackWorld {
   root = new T.Group();
+  street: StreetScene;
   private materials = new Map<string, T.Material>();
   private blocks = new Map<number, T.Group>();
   private water?: T.MeshPhysicalMaterial;
@@ -33,7 +35,9 @@ export class TrackWorld {
     public course: Course,
     public scenario: TrafficScenario = course.config.trafficPreset || 'free',
   ) {
+    this.street = new StreetScene(course);
     this.build();
+    this.root.add(this.street.root);
   }
   setDaylight(day: boolean) {
     this.root.traverse((o) => {
@@ -102,41 +106,7 @@ export class TrackWorld {
         }
       }
     }
-    const addTree = (z: number, x: number, birch = false) => {
-      const g = this.placed(z, x),
-        h = forest ? 13 : 7;
-      this.box(
-        g,
-        [birch ? 0.55 : 0.8, h, 0.7],
-        [0, h / 2, 0],
-        this.material(birch ? '#d8ded3' : '#735842'),
-      );
-      if (birch)
-        for (let k = 1; k < 6; k++)
-          this.box(
-            g,
-            [0.57, 0.2, 0.72],
-            [0, k * 2, 0],
-            this.material('#5c635d'),
-          );
-      const crown = new T.Mesh(
-        new T.SphereGeometry(forest ? 5 : 4, 8, 6),
-        this.material(z % 3 ? '#3e8055' : '#6e9c50'),
-      );
-      crown.position.y = h + 1;
-      crown.scale.y = forest ? 1.7 : 1;
-      g.add(crown);
-    };
     for (let z = 0; z < length; z += forest ? 24 : 64) {
-      if (forest) {
-        for (const side of [-1, 1])
-          for (let row = 0; row < 2; row++)
-            addTree(
-              z + row * 8,
-              side * (23 + row * 22 + random(z) * 5),
-              config.id === 'inje-forest',
-            );
-      } else if (!pasture) addTree(z, -24 - random(z) * 16);
       if (pasture) {
         for (const side of [-1, 1]) {
           const g = this.placed(z, side * 19);
@@ -608,12 +578,21 @@ export class TrackWorld {
       config.theme || '',
     );
     const road = new T.MeshPhysicalMaterial({
-      color: '#111c2a',
-      roughness: 0.42,
-      metalness: 0.25,
-      clearcoat: 0.25,
-      envMapIntensity: 0.06,
+      color: '#535962',
+      roughness: 0.85,
+      metalness: 0.04,
+      clearcoat: 0.08,
+      envMapIntensity: 0.25,
     });
+    const asphalt = new T.TextureLoader().load(
+      import.meta.env.BASE_URL + 'textures/asphalt.png',
+    );
+    asphalt.wrapS = asphalt.wrapT = T.RepeatWrapping;
+    asphalt.repeat.set(11, 6);
+    asphalt.anisotropy = 4;
+    road.map = asphalt;
+    road.bumpMap = asphalt;
+    road.bumpScale = 0.065;
     this.ribbon(-11, 11, 0, road, -40, length + 60);
     const ground = this.box(
       this.root,
@@ -653,7 +632,7 @@ export class TrackWorld {
         0.02,
         this.material('#e2bd6c'),
       );
-      const rail = (start: number, end: number) => {
+      const railSegment = (start: number, end: number) => {
         this.ribbon(
           side * 11.1 - 0.08,
           side * 11.1 + 0.08,
@@ -670,6 +649,15 @@ export class TrackWorld {
           start,
           end,
         );
+      };
+      const rail = (start: number, end: number) => {
+        let cursor = start;
+        for (const c of this.street.crossings) {
+          if (c.z + 6 < cursor || c.z - 6 > end) continue;
+          if (c.z - 6 > cursor) railSegment(cursor, c.z - 6);
+          cursor = Math.max(cursor, c.z + 6);
+        }
+        if (cursor < end) railSegment(cursor, end);
       };
       if (side < 0) rail(0, length);
       else
@@ -697,6 +685,7 @@ export class TrackWorld {
     const stripe = this.material('#bacbd4'),
       pole = this.material('#657484');
     for (let s = 0; s < length; s += 14) {
+      if (this.street.crossings.some((c) => Math.abs(c.z - s) < 9)) continue;
       const frame = this.placed(s, 0);
       for (const lane of [-6, -2, 2, 6])
         this.box(frame, [0.13, 0.025, 6], [lane, 0.025, -3], stripe);
@@ -726,27 +715,7 @@ export class TrackWorld {
             Math.abs(s - l.at * length) < 175,
         );
         if (nearLandmark) continue;
-        if (mountain) {
-          for (let j = 0; j < 2; j++) {
-            const tree = this.placed(
-              s + j * 15,
-              side * (19 + random(index + j) * 30),
-            );
-            this.box(
-              tree,
-              [0.7, 5, 0.7],
-              [0, 1.5, 0],
-              this.material('#3b3330'),
-            );
-            const crown = new T.Mesh(
-              new T.ConeGeometry(3 + random(index) * 2, 9, 7),
-              this.material(index % 2 ? '#164639' : '#265b45'),
-            );
-            crown.position.y = 7;
-            tree.add(crown);
-          }
-          continue;
-        }
+        if (mountain) continue;
         const width = 10 + random(index) * 12,
           height =
             (18 + random(index + 5 + (config.seed || 0)) * 72) *
@@ -905,7 +874,9 @@ export class TrackWorld {
             m.removeFromParent();
             m.geometry.dispose();
           });
-          block.add(new T.Mesh(geo, mat));
+          const merged = new T.Mesh(geo, mat);
+          merged.receiveShadow = true;
+          block.add(merged);
         }
       }
     }
@@ -1028,7 +999,8 @@ export class TrackWorld {
     sign.position.y = 5;
     label.add(sign);
   }
-  animate(t: number) {
+  animate(t: number, time = 0, distance = 0) {
+    this.street.update(time, distance);
     for (const rotor of this.rotors) rotor.rotation.z = t * 0.00025;
     if (this.fountains)
       (this.fountains.material as T.PointsMaterial).opacity =
@@ -1036,6 +1008,7 @@ export class TrackWorld {
     if (this.water) this.water.roughness = 0.25 + Math.sin(t * 0.0003) * 0.035;
   }
   dispose() {
+    this.street.dispose();
     const seen = new Set<T.Material>();
     this.root.traverse((o) => {
       if (o instanceof T.Mesh) {

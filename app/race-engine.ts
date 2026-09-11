@@ -1,3 +1,5 @@
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { signalAt, type SignalPhase } from './signals';
 import { getVehicle } from './vehicles';
 import { prepareShowroomModel } from './showroom-model';
 import { buildVehicle, TRAFFIC_BODIES } from './vehicle-model';
@@ -48,6 +50,7 @@ export type Snapshot = {
   timeLeft: number;
   checkpoints: number;
   warning: string;
+  signal?: { phase: SignalPhase; distance: number; remaining: number } | null;
   throttle: boolean;
   braking: boolean;
   distance: number;
@@ -148,6 +151,7 @@ export class RaceEngine {
       start: this.course.length * 0.3,
       end: this.course.length * 0.49,
       time: this.state.time,
+      crossings: this.world?.street.crossings || [],
     };
   }
   setTraffic = (choice: 'route' | TrafficScenario) => {
@@ -163,6 +167,9 @@ export class RaceEngine {
   showroomYaw = 2.45;
   showroomPitch = 0.23;
   private studio = new T.Group();
+  private sunlight?: T.DirectionalLight;
+  private daylightSky?: T.DataTexture;
+  private daylightEnvironment?: T.WebGLRenderTarget;
   private modelLoads = new Map<string, Promise<void>>();
   private studioWasReady = false;
   orbitShowroom = (dx: number, dy: number) => {
@@ -243,7 +250,13 @@ export class RaceEngine {
     this.peaceful = peaceful;
     this.cruise = cruise;
     const sky = daylight ? '#a2c9dc' : this.course.config.sky;
-    this.scene.background = new T.Color(sky);
+    this.scene.background =
+      daylight && this.daylightSky ? this.daylightSky : new T.Color(sky);
+    this.scene.environment =
+      daylight && this.daylightEnvironment
+        ? this.daylightEnvironment.texture
+        : this.environment.texture;
+    this.scene.backgroundIntensity = 0.6;
     this.scene.fog = new T.FogExp2(sky, daylight ? 0.0015 : 0.0032);
     this.scene.environmentIntensity = daylight ? 0.4 : 0.42;
     this.scene.children.forEach((o) => {
@@ -351,16 +364,47 @@ export class RaceEngine {
     this.scene.environmentIntensity = 0.42;
     pmrem.dispose();
     room.dispose();
+    new RGBELoader().load(
+      import.meta.env.BASE_URL + 'textures/daylight.hdr',
+      (texture) => {
+        if (this.disposed) {
+          texture.dispose();
+          return;
+        }
+        texture.mapping = T.EquirectangularReflectionMapping;
+        this.daylightSky = texture;
+        const generator = new T.PMREMGenerator(this.renderer);
+        this.daylightEnvironment = generator.fromEquirectangular(texture);
+        generator.dispose();
+        if (this.state.mode !== 'ready')
+          this.configureExperience(this.daylight, this.peaceful, this.cruise);
+      },
+      undefined,
+      () => {},
+    );
     this.scene.add(new T.HemisphereLight('#afcaff', '#273349', 1.1));
     const moon = new T.DirectionalLight('#b4ccff', 1.5);
     moon.position.set(-30, 70, -80);
-    this.scene.add(moon);
+    this.sunlight = moon;
+    moon.castShadow = true;
+    moon.shadow.mapSize.set(1024, 1024);
+    Object.assign(moon.shadow.camera, {
+      left: -32,
+      right: 32,
+      top: 32,
+      bottom: -32,
+      near: 1,
+      far: 160,
+    });
+    moon.shadow.bias = -0.0004;
+    moon.shadow.normalBias = 0.025;
+    this.scene.add(moon, moon.target);
     const pink = new T.DirectionalLight('#ffa3b9', 0.6);
     pink.position.set(35, 15, 20);
     this.scene.add(pink);
     this.scene.add(this.player);
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = T.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = T.PCFShadowMap;
     const floor = new T.Mesh(
       new T.CircleGeometry(120, 96),
       new T.MeshStandardMaterial({
@@ -709,6 +753,12 @@ export class RaceEngine {
           passed: false,
         });
     }
+    this.hazards = this.hazards.filter(
+      (h) =>
+        !(this.world?.street.crossings || []).some(
+          (c) => Math.abs(c.z - h.z) < 75,
+        ),
+    );
     for (const hazard of this.hazards) {
       const g = new T.Group();
       const f = this.course.sample(hazard.z, hazard.x);
@@ -776,6 +826,18 @@ export class RaceEngine {
       c.passed = false;
     });
   }
+  previewCrossing = () => {
+    if (!import.meta.env.DEV) return;
+    this.start();
+    const c = this.world.street.crossings[0];
+    if (c) {
+      this.state.distance = c.stop - 32;
+      this.state.time = 7;
+      this.state.camera = 0;
+      this.cruise = false;
+      this.drive.velocity = 0;
+    }
+  };
   start = () => {
     if (!this.state.loaded || this.state.error) return;
     const { route, camera } = this.state;
@@ -1007,8 +1069,30 @@ export class RaceEngine {
     }
     this.furthest = Math.max(this.furthest, s.distance);
     s.warning = '';
+    const nextSignal = (this.world?.street.crossings || []).find(
+      (c) =>
+        c.stop >= s.distance - this.vehicle.length / 2 &&
+        c.stop - s.distance < 170,
+    );
+    s.signal = nextSignal
+      ? {
+          ...signalAt(nextSignal, s.time),
+          distance: Math.max(
+            0,
+            Math.round(nextSignal.stop - s.distance - this.vehicle.length / 2),
+          ),
+        }
+      : null;
     if (!this.peaceful) {
-      s.timeLeft -= dt;
+      if (
+        !(
+          s.signal &&
+          s.signal.phase !== 'green' &&
+          s.signal.distance < 22 &&
+          s.speed < 2
+        )
+      )
+        s.timeLeft -= dt;
       if (
         s.distance > (this.course.length * (s.checkpoints + 1)) / 4 &&
         s.checkpoints < 3
@@ -1164,6 +1248,7 @@ export class RaceEngine {
     this.hazardRoot.visible = !ready && !this.peaceful;
     if (ready) {
       this.scene.background = new T.Color('#d6dfe6');
+      this.scene.environment = this.environment.texture;
       if (this.scene.fog instanceof T.FogExp2) {
         this.scene.fog.color.set('#d6dfe6');
         this.scene.fog.density = 0.009;
@@ -1183,6 +1268,11 @@ export class RaceEngine {
           heading: 0,
         }
       : this.course.sample(s.distance, this.x);
+    if (this.sunlight) {
+      this.sunlight.castShadow = !ready && this.daylight;
+      this.sunlight.position.copy(f.position).add(new T.Vector3(-30, 60, -25));
+      this.sunlight.target.position.copy(f.position);
+    }
     this.player.position.copy(f.position);
     this.player.position.y += 0.025;
     this.player.rotation.set(
@@ -1228,7 +1318,7 @@ export class RaceEngine {
       flame.visible = s.boost;
       flame.scale.y = 1 + Math.sin(t * 0.08) * 0.25;
     });
-    this.world.animate(t);
+    this.world.animate(t, s.time, s.distance);
     const hood = s.camera === 1 && !ready,
       narrow = this.camera.aspect < 0.8;
     this.player.visible = !hood;
@@ -1302,11 +1392,13 @@ export class RaceEngine {
       s.drift,
       this.vehicle.spec.powertrain === 'electric',
     );
-    this.composer.passes[1].enabled = !ready;
+    this.composer.passes[1].enabled = !ready && !this.daylight;
     this.composer.render();
     if (t - this.ui > 85) {
       this.ui = t;
       Object.assign(this.canvas.dataset, {
+        streetLoaded: String(!!this.world.street.root.userData.loaded),
+        signal: s.signal?.phase || 'none',
         mode: s.mode,
         vehicle: this.vehicleId,
         orbit: String(this.showroomYaw.toFixed(2)),
@@ -1355,6 +1447,8 @@ export class RaceEngine {
     this.world.dispose();
     this.disposeObject(this.scene);
     this.environment.dispose();
+    this.daylightSky?.dispose();
+    this.daylightEnvironment?.dispose();
     this.composer.passes.forEach((p) => p.dispose());
     this.composer.dispose();
     this.renderer.dispose();

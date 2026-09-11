@@ -343,3 +343,28 @@ test('a long truck collides at its actual rear extent before a compact car would
   compact.simulate(0.025);
   assert.equal(compact.state.mode, 'racing');
 });
+
+test('red-light waiting freezes the race countdown and pause freezes the signal clock', () => {
+  const { e } = fixture();
+  e.drive.velocity = 0;
+  e.state.speed = 0;
+  e.state.velocity = 0;
+  e.state.distance = 170;
+  e.state.time = 7;
+  e.state.timeLeft = 60;
+  e.world = {
+    street: { crossings: [{ id: 0, z: 190, stop: 182, offset: 16 }] },
+  };
+  e.simulate(0.1);
+  assert.equal(e.state.signal.phase, 'red');
+  assert.equal(e.state.timeLeft, 60);
+  const time = e.state.time;
+  e.state.mode = 'paused';
+  e.simulate(1);
+  assert.equal(e.state.time, time);
+  e.state.mode = 'racing';
+  e.state.time = 17;
+  e.simulate(0.1);
+  assert.equal(e.state.signal.phase, 'green');
+  assert.ok(e.state.timeLeft < 60);
+});
