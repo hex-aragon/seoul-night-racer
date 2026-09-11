@@ -10,6 +10,8 @@ export class DriveAudio {
   private engineSamples: { source: AudioBufferSourceNode; gain: GainNode }[] =
     [];
   private tire?: GainNode;
+  private electricMotor?: OscillatorNode;
+  private electricGain?: GainNode;
   private tireSource?: AudioBufferSourceNode;
   private sampleError = false;
   private noise?: AudioBuffer;
@@ -83,6 +85,13 @@ export class DriveAudio {
     tireFilter.connect(this.tire);
     this.tire.connect(compressor);
     this.tireSource.start();
+    this.electricMotor = c.createOscillator();
+    this.electricMotor.type = 'sine';
+    this.electricGain = c.createGain();
+    this.electricGain.gain.value = 0;
+    this.electricMotor.connect(this.electricGain);
+    this.electricGain.connect(compressor);
+    this.electricMotor.start();
     void this.renderMusic()
       .then((buffer) => {
         if (this.disposed) return;
@@ -156,6 +165,7 @@ export class DriveAudio {
     mode: string,
     driveRpm?: number,
     drift = false,
+    electric = false,
   ) {
     if (!this.ctx) return;
     const c = this.ctx;
@@ -208,9 +218,24 @@ export class DriveAudio {
       );
     }
     this.tire?.gain.setTargetAtTime(
-      active && drift ? this.engineVolume * 0.11 : 0,
+      active
+        ? this.engineVolume *
+            ((drift ? 0.11 : 0) + Math.min(speed / 260, 1) * 0.012)
+        : 0,
       c.currentTime,
       0.06,
+    );
+    this.electricMotor?.frequency.setTargetAtTime(
+      180 + speed * 4,
+      c.currentTime,
+      0.2,
+    );
+    this.electricGain?.gain.setTargetAtTime(
+      active && electric && speed > 1
+        ? this.engineVolume * (throttle ? 0.018 : 0.007)
+        : 0,
+      c.currentTime,
+      0.15,
     );
     this.oscillators[0].frequency.setTargetAtTime(
       (rpm / 60) * 4 * shift,
@@ -398,6 +423,7 @@ export class DriveAudio {
     this.musicSource?.stop();
     this.engineSamples.forEach((s) => s.source.stop());
     this.tireSource?.stop();
+    this.electricMotor?.stop();
     this.oscillators.forEach((o) => o.stop());
     void this.ctx?.close();
   }

@@ -9,3 +9,5 @@ Asset source: https://github.com/mrdoob/three.js/tree/dev/examples/models/gltf
 The model is used with modified paint, glass, and lighting materials. This project is not affiliated with Ferrari.
 Three.js: https://github.com/mrdoob/three.js/blob/dev/LICENSE
 Draco decoder: Apache License 2.0, https://github.com/google/draco/blob/main/LICENSE
+
+The remaining nine player vehicles and the compact/sedan/SUV/light truck/box truck/dump truck/bus traffic bodies are original procedural geometry authored for this game. Brand names identify design inspiration only. They are not exact manufacturer models and there is no manufacturer affiliation or endorsement. No third-party brand logos are bundled. Game performance values are fictional tuning.

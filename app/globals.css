@@ -2528,3 +2528,411 @@ h1 em {
   font-size: 12px;
   padding: 12px 18px;
 }
+/* Korean touring garage: pearl paint, blue glass and road-sign amber. */
+.ready .fleet-garage {
+  top: 100px;
+  left: 3%;
+  width: 350px;
+  max-height: calc(100svh - 175px);
+  overflow: auto;
+  padding: 20px;
+  background: #173a4aec;
+  border: 1px solid #78919b66;
+  border-radius: 18px;
+  color: #edf3f4;
+  scrollbar-width: thin;
+}
+.ready .fleet-garage h1 {
+  font-size: 30px;
+  letter-spacing: -1.3px;
+  margin: 0 0 8px;
+}
+.ready .fleet-garage > p {
+  font-size: 12px;
+  color: #b8d0d9;
+  margin: 0 0 18px;
+}
+.fleet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.fleet-heading h2 {
+  font-size: 14px;
+  margin: 0;
+}
+.preview-toggle {
+  background: transparent;
+  color: #acdbea;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.fleet-car {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 6px 10px 9px;
+  border: 1px solid #78919b55;
+  border-radius: 8px;
+  background: #214657;
+  color: #edf3f4;
+  text-align: left;
+  cursor: pointer;
+}
+.fleet-car[aria-pressed='true'] {
+  border-color: #f2b753;
+  background: #365c68;
+  box-shadow: inset 3px 0 #f2b753;
+}
+.car-silhouette {
+  grid-column: 1/-1;
+  width: 100%;
+  height: 43px;
+}
+.fleet-car strong {
+  font-size: 12px;
+}
+.fleet-car small {
+  font-size: 9px;
+  color: #b8d0d9;
+}
+.vehicle-summary {
+  display: grid;
+  gap: 5px;
+  margin: 13px 0 10px;
+}
+.vehicle-summary strong {
+  font-size: 17px;
+}
+.vehicle-summary span {
+  font-size: 11px;
+  color: #c9d9dd;
+}
+.vehicle-summary small {
+  font-size: 10px;
+  color: #a8c5ce;
+}
+.ready .fleet-garage .paint-options {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 12px 0 18px;
+}
+.ready .fleet-garage .paint-options button {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  border: 2px solid #ffffff55;
+}
+.ready .fleet-garage .paint-options button[aria-pressed='true'] {
+  outline: 2px solid #f2b753;
+  outline-offset: 2px;
+}
+.custom-paint {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b8d0d9;
+  border-radius: 50%;
+  font-size: 19px;
+  overflow: hidden;
+}
+.custom-paint input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.custom-paint span {
+  pointer-events: none;
+}
+.departure-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #78919b55;
+}
+.departure-summary span {
+  font-size: 10px;
+  color: #adc8d2;
+}
+.ready .fleet-garage .start-button {
+  width: 100%;
+  margin-top: 10px;
+  justify-content: space-between;
+  background: #f2b753;
+  color: #173a4a;
+  padding: 15px 18px;
+  font-size: 15px;
+}
+.ready .fleet-garage .touge-start {
+  font-size: 11px;
+  margin-top: 6px;
+}
+.ready .route-picker {
+  top: 100px;
+  right: 3%;
+  width: 330px;
+  max-height: calc(100svh - 175px);
+  overflow: auto;
+  padding: 18px;
+  border-radius: 18px;
+  background: #173a4aed;
+  scrollbar-width: thin;
+}
+.catalog-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+.catalog-tabs button {
+  flex: 1;
+  border: 0;
+  background: #294e5e;
+  color: #c7dbe2;
+  padding: 10px 5px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.catalog-tabs button[aria-pressed='true'] {
+  background: #d9e9ee;
+  color: #173a4a;
+}
+.traffic-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #c8dae0;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.traffic-choice select {
+  min-width: 0;
+  background: #294e5e;
+  color: #edf3f4;
+  padding: 8px;
+  border: 1px solid #78919b88;
+  border-radius: 5px;
+  font: inherit;
+}
+.ready .picker-heading {
+  color: #edf3f4;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.ready .route-card {
+  background: #234857;
+  border-color: #78919b66;
+  border-radius: 8px;
+  min-height: 94px;
+}
+.ready .route-card.selected {
+  border-color: #f2b753;
+  background: #365c68;
+}
+.ready .route-card h2 {
+  font-size: 15px;
+}
+.ready .route-card p {
+  font-size: 10px;
+  color: #c2d5dd;
+}
+.ready .route-card .route-sketch {
+  width: 42px;
+  min-width: 42px;
+  height: 65px;
+  margin: 0;
+}
+.ready .route-note {
+  font-size: 10px;
+  color: #b9cbd2;
+}
+.showroom-hidden {
+  display: none !important;
+}
+.showroom-bar {
+  position: absolute;
+  z-index: 20;
+  bottom: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 18px 24px;
+  background: #173a4ae8;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  max-width: 90%;
+  color: #edf3f4;
+}
+.showroom-bar > button {
+  background: #f2b753;
+  border: 0;
+  border-radius: 6px;
+  padding: 10px 15px;
+  color: #173a4a;
+  cursor: pointer;
+}
+.showroom-bar .paint-options {
+  margin: 0;
+  gap: 8px;
+}
+.showroom-bar .paint-options button {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+}
+.driver-wheel .steering-feedback {
+  width: 58px;
+  height: 58px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+.driver-wheel .steer-buttons {
+  display: flex;
+  width: 156px;
+  gap: 8px;
+  margin: 8px 0;
+}
+.driver-wheel .steer-buttons button {
+  width: 74px;
+  height: 66px;
+  font-size: 29px;
+  border-radius: 12px;
+  border: 1px solid #87a6b3;
+  background: #294e5e;
+  color: #f1f7f8;
+  touch-action: none;
+  user-select: none;
+}
+.driver-wheel .steer-buttons button:active {
+  background: #acd3dc;
+  color: #173a4a;
+  transform: translateY(2px);
+}
+.driver-dash .driver-wheel > span {
+  font-size: 10px;
+}
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 2px solid #f2b753;
+  outline-offset: 3px;
+}
+@media (max-width: 1050px) and (min-width: 701px) {
+  .ready .fleet-garage {
+    width: 300px;
+    left: 2%;
+    padding: 14px;
+  }
+  .ready .route-picker {
+    width: 290px;
+    right: 2%;
+    padding: 14px;
+  }
+}
+@media (max-width: 700px) {
+  .ready .fleet-garage {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    margin: 20px 4% 0;
+    padding: 18px;
+    max-height: none;
+    overflow: visible;
+  }
+  .ready .fleet-garage h1 {
+    font-size: 28px;
+  }
+  .fleet-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .car-silhouette {
+    height: 49px;
+  }
+  .ready .route-picker {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    margin: 20px 4% 115px;
+    max-height: none;
+    overflow: visible;
+  }
+  .ready .model-credit {
+    left: 4%;
+    right: 4%;
+    bottom: 60px;
+    font-size: 9px;
+  }
+  .ready:has(.showroom-bar) {
+    height: 100svh;
+    min-height: 100svh;
+    overflow: hidden;
+  }
+  .showroom-bar {
+    bottom: 10%;
+    width: 90%;
+    padding: 16px;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .showroom-bar strong {
+    font-size: 16px;
+  }
+  .driver-wheel .steering-feedback {
+    width: 34px;
+    height: 34px;
+  }
+  .driver-wheel .steer-buttons {
+    width: 98px;
+    gap: 6px;
+    margin: 6px 0;
+  }
+  .driver-wheel .steer-buttons button {
+    width: 46px;
+    height: 62px;
+    font-size: 22px;
+    border-radius: 10px;
+  }
+  .driver-wheel .drift-button {
+    width: 98px;
+    padding: 7px 3px;
+  }
+}
+@media (max-width: 350px) {
+  .driver-wheel .steer-buttons {
+    width: 80px;
+    gap: 4px;
+  }
+  .driver-wheel .steer-buttons button {
+    width: 38px;
+    height: 56px;
+  }
+  .driver-wheel .drift-button {
+    width: 80px;
+  }
+}
+.ready .selected-route-caption {
+  display: none;
+}

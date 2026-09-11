@@ -54,8 +54,9 @@ export function selectGear(d: DriveState, selector: Selector): boolean {
   return true;
 }
 export const GEAR_LIMITS = [65, 102, 145, 190, 238, 282, 320];
-export function shiftDrive(d: DriveState, delta: number) {
-  const gear = Math.max(1, Math.min(7, d.gear + delta));
+export function shiftDrive(d: DriveState, delta: number, spec = FERRARI) {
+  if (spec.powertrain === 'electric') return false;
+  const gear = Math.max(1, Math.min(spec.forwardGears, d.gear + delta));
   if (
     d.selector !== 'D' ||
     gear === d.gear ||
@@ -74,6 +75,12 @@ export function stepDrive(
   dt: number,
   spec = FERRARI,
 ) {
+  if (spec.powertrain === 'electric') {
+    d.gear = 1;
+    d.transmission = 'auto';
+    d.autoHold = 0;
+    d.shiftTime = 0;
+  }
   const v = Math.abs(d.velocity),
     direction = d.selector === 'R' ? -1 : 1;
   d.autoHold = Math.max(0, (d.autoHold || 0) - dt);

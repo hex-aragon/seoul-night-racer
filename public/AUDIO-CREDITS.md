@@ -21,4 +21,4 @@ No endorsement by the original authors is implied.
 **Han River Afterglow**: original 104 BPM city-pop-inspired instrumental composed for this game.
 Electric piano, bass, melody and percussion are synthesized; no commercial songs are sampled.
 The composition and generated music are dedicated to CC0 1.0.
-Tire friction/crash effects and the offline fallback engine are synthesized.
+Electric motor, tire friction/crash effects and the offline fallback engine are synthesized.

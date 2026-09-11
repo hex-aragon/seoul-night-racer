@@ -1,4 +1,8 @@
+export type TrafficScenario = 'free' | 'works' | 'busy';
 export type TrafficMotion = {
+  body?: number;
+  length?: number;
+  width?: number;
   x: number;
   z: number;
   speed: number;
@@ -26,11 +30,12 @@ export function createMotion(
   random: () => number,
   origin = 0,
 ): TrafficMotion {
-  const kind = index % 4 === 3 ? 'motorcycle' : 'car',
+  const kind = index < 8 && index % 4 === 3 ? 'motorcycle' : 'car',
     merge = index % 5 === 1 || index === 7;
   const x = merge ? 16 : [-8, -4, 0, 4, 8][Math.floor(random() * 5)];
   return {
     x,
+    body: [0, 3, 5, 0, 4, 2, 6, 0, 1, 5, 4, 0, 3, 1, 2, 6][index % 16],
     z:
       origin +
       (merge
@@ -65,7 +70,8 @@ export function requestLaneChange(
     others.some(
       (o) =>
         o !== v &&
-        Math.abs(o.z - v.z) < gap &&
+        Math.abs(o.z - v.z) <
+          gap + ((o.length || 4.6) + (v.length || 4.6)) / 2 &&
         (Math.abs(o.x - target) < 2.4 || Math.abs(o.targetX - target) < 2.4),
     )
   )
@@ -90,6 +96,12 @@ export function stepTraffic(
   others: TrafficMotion[],
   player: { z: number; x: number; speed: number },
   random: () => number,
+  environment?: {
+    scenario: TrafficScenario;
+    start: number;
+    end: number;
+    time: number;
+  },
 ) {
   v.elapsed += dt;
   if (v.phase === 'cruise') {
@@ -106,7 +118,8 @@ export function stepTraffic(
       others.some(
         (o) =>
           o !== v &&
-          Math.abs(o.z - v.z) < 18 &&
+          Math.abs(o.z - v.z) <
+            18 + ((o.length || 4.6) + (v.length || 4.6)) / 2 &&
           Math.abs(o.x - v.targetX) < 2.4,
       ) ||
       (Math.abs(player.x - v.targetX) < 2.5 &&
@@ -130,9 +143,37 @@ export function stepTraffic(
   if (v.merge && v.phase === 'change')
     v.speed = Math.min(21, v.speed + 3.5 * dt);
   let speed = v.speed;
+  if (environment && !v.merge) {
+    const { scenario, start, end, time } = environment;
+    if (v.z > start - 100 && v.z < end) {
+      if (scenario === 'busy')
+        speed = Math.min(speed, Math.floor(time / 9) % 3 === 0 ? 0 : 5);
+      if (scenario === 'works') {
+        speed = Math.min(speed, 10);
+        if (v.x > 5 && v.z > start - 90) {
+          if (v.phase === 'cruise')
+            requestLaneChange(v, 4, others, player, random);
+          if (v.x > 5.5)
+            speed = Math.min(speed, Math.max(0, (start - v.z - 12) * 0.4));
+        }
+      }
+    }
+  }
   for (const o of others)
-    if (o !== v && o.z > v.z && o.z - v.z < 24 && Math.abs(o.x - v.x) < 2)
-      speed = Math.min(speed, o.actualSpeed ?? o.speed);
+    if (
+      o !== v &&
+      o.z > v.z &&
+      o.z - v.z < 24 + (o.length || 4.6) / 2 &&
+      Math.abs(o.x - v.x) < 2
+    )
+      speed = Math.min(
+        speed,
+        o.actualSpeed ?? o.speed,
+        Math.max(
+          0,
+          (o.z - v.z - ((o.length || 4.6) + (v.length || 4.6)) / 2 - 3) * 1.2,
+        ),
+      );
   if (player.z > v.z && player.z - v.z < 28 && Math.abs(player.x - v.x) < 2.4)
     speed = Math.min(speed, player.speed);
   v.actualSpeed = speed;

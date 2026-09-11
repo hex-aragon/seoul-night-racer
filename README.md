@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 08
+# Seoul / Midnight Run — Chapter 09
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -10,7 +10,7 @@ Three.js browser arcade racing with a detailed Ferrari 458 Italia, original city
 - **남산 와인딩**: continuous S bends, hills, trees, N Seoul Tower.
 - **서울 랜드마크 투어**: city bends, Gwanghwamun, Cheonggyecheon, Lotte World Tower.
 
-All 131 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and eight scenic destinations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
+All 133 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and ten scenic destinations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
 
 ## Controls
 
@@ -20,7 +20,7 @@ All 131 maps are available immediately: the three landmark routes, 120 determini
 - Space or the drift button: drift while steering above 60 km/h; braking while steering above 80 km/h also initiates a slide.
 - P / Escape: pause
 - Enter: start / restart
-- Mouse / touch: drag the visible steering wheel and hold the accelerator / brake pedals. Simultaneous touch is supported. Scene drag gestures remain available.
+- Mouse / touch: hold the large left/right arrow buttons and accelerator / brake pedals simultaneously. The small wheel is a steering indicator. Scene drag gestures remain available.
 - AT / MT: automatic or sequential manual 1–7 speed transmission
 - P / R / N / D selector buttons on the instrument panel: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
 - Runs start 20 m into the route, allowing a short reverse maneuver. Route boundaries limit travel; these are road courses, not an open-world parking simulator.
@@ -60,11 +60,11 @@ Tests cover course continuity, curve forces, collision and finish outcomes, once
 
 ## Extension points
 
-`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions, free steering through parking lots and selectable EV/Tesla models are future work; P currently locks the vehicle, not a parking minigame. No Tesla or EV vehicle is presented as playable.
+`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions and free steering through parking lots remain future work; P currently locks the vehicle, not a parking minigame. The selectable Tesla-inspired car uses a single-speed electric powertrain, battery gauge, stronger coasting deceleration, a small regenerative charge return and synthesized electric motor sound. It does not expose manual gear paddles.
 
 ## Driver-focused interface
 
-A compact bottom panel holds the wheel, accelerator, brake, speed, compass heading, forward/reverse gear, fuel gauge and AT/MT selection. Racing adds a small timer, dodge/combo counter and upcoming hazard/curve warning; peaceful mode keeps this ribbon hidden. The two top camera buttons select a distant chase view (12 m behind and 4.6 m high) or windshield view (the car exterior is hidden). The settings icon or Escape pauses driving and opens the settings modal; double-tapping scenery also opens it.
+A compact bottom panel holds large steering arrows and a wheel indicator, accelerator, brake, speed, compass heading, forward/reverse gear, fuel gauge and AT/MT selection. Racing adds a small timer, dodge/combo counter and upcoming hazard/curve warning; peaceful mode keeps this ribbon hidden. The two top camera buttons select a distant chase view (12 m behind and 4.6 m high) or windshield view (the car exterior is hidden). The settings icon or Escape pauses driving and opens the settings modal; double-tapping scenery also opens it.
 
 Daylight adjusts sky, fog, sun lighting and building glass textures; night restores illuminated scenery. Peaceful mode offers forgiving collisions and gentle curve assistance. Manual pedals are the default, including a one-time migration of the earlier auto-cruise default. Optional cruise and other settings persist locally. Racing is the new default (including a one-time migration), and peaceful driving remains selectable.
 
@@ -74,8 +74,16 @@ Tests cover fuel consumption/depletion and default migration in addition to driv
 
 ## Scenic drives and live traffic
 
-Eight new fictional courses reinterpret East Coast, Jeju Aewol, Namhae, Han River riverside, Inje birch forest, Damyang tree avenue, Daegwallyeong ranch and Seorak mountain forest. They use distinct coast/water, river/park, woodland and pasture scenery. The ranch includes sheep, a barn and animated wind turbines. These are inspired game environments, not geographic road reproductions.
+Ten featured fictional courses reinterpret Incheon Yeongjong, East Coast, Jeju Aewol, Han River riverside, Inje birch forest, Damyang tree avenue, Daegwallyeong ranch, Namhae, Seorak mountain forest and Busan Haeundae Dalmaji. The default catalog highlights these ten, with all 133 routes still available in the full catalog. They use distinct coast/water, river/park, woodland and pasture scenery. The ranch includes sheep, a barn and animated wind turbines. These are inspired game environments, not geographic road reproductions.
 
-Every course has six cars and two modeled motorcycles. A new seeded traffic sequence is chosen for each drive. Vehicles signal at least 1.5 seconds before smoothly changing lanes, check the destination gap and wait when blocked. Shoulder entries align with gaps in the right barrier; one motorcycle approaches from behind and another merges. Following traffic slows behind occupied lanes and the player. Vehicles recycle well away from the immediate driving area.
+Every course has sixteen traffic vehicles including two motorcycles. The seven road-vehicle body classes are compact, sedan, SUV, pickup/light truck, box truck, dump truck and bus. Trucks have larger collision footprints, longer gap checks and lower cruising speeds. A new seeded traffic sequence is chosen for each drive. Vehicles signal at least 1.5 seconds before smoothly changing lanes, check the destination gap and wait when blocked. Shoulder entries align with gaps in the right barrier; one motorcycle approaches from behind and another merges. Following traffic slows behind occupied lanes and the player. Vehicles recycle well away from the immediate driving area.
 
-Steering uses a responsive input curve, speed-sensitive gain, a bounded response rate and smooth centering of the wheel. Shorter wheel drag travel and holdable left/right buttons support touch driving. Lateral momentum and stronger curve forces reward countersteering in racing mode. Seven gears permit acceleration to a game maximum of 320 km/h, with no separate 120 km/h cap. AT/MT and forward-neutral selection work during driving; reverse and parking require stopping. Releasing the wheel no longer pulls the vehicle toward the road center; peaceful assistance only nudges it away from the outer edge. The visible wheel interpolates between HUD updates.
+Steering uses a responsive input curve, speed-sensitive gain, a bounded response rate and smooth centering of the wheel. Large holdable left/right arrows are the primary touch controls. Lateral momentum and stronger curve forces reward countersteering in racing mode. Seven gears permit acceleration to a game maximum of 320 km/h, with no separate 120 km/h cap. AT/MT and forward-neutral selection work during driving; reverse and parking require stopping. Releasing the wheel no longer pulls the vehicle toward the road center; peaceful assistance only nudges it away from the outer edge. The visible wheel interpolates between HUD updates.
+
+## Vehicle garage and road conditions
+
+Ten brands are selectable before driving: Ferrari, Porsche, Mercedes-Benz, Audi, BMW, Hyundai, Kia, Tesla, Toyota and Lincoln. Ferrari retains the attributed 458 Italia asset; the other nine are original stylized game bodies inspired by brand design cues, not licensed or exact production-car reproductions. Body dimensions, silhouette, lamps, grille and acceleration/top-speed tuning differ. All specifications are arcade tuning, not manufacturer claims. A full 3D preview, ten paint presets and a custom color picker are available. Selected vehicle, paint and road condition persist locally.
+
+Each route offers everyday traffic, roadworks or rush-hour congestion, with a recommended condition attached to featured destinations. Roadworks close the right lane with cones, warning boards, parked dump trucks, workers and excavators. Traffic signals and merges left or waits for a gap before the closure. Congestion creates a slow queue that stops and starts; extra time is added to timed challenges. Player controls and collision behavior remain active in both situations.
+
+Incheon adds airport scenery, city buildings and a bridge; East Coast adds a coastal railway and rock formations; Busan adds beach umbrellas, towers and a bridge; Jeju adds stone walls and palms; Namhae adds tiled-roof houses; Seorak adds mountain rock formations. Existing birch forest, tree avenues, pasture sheep and wind turbines remain. Road geometry and scenery reinterpret the places for a game.

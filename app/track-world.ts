@@ -1,3 +1,5 @@
+import { buildVehicle, TRAFFIC_BODIES } from './vehicle-model';
+import type { TrafficScenario } from './traffic';
 import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Course, type Landmark } from './routes';
@@ -12,7 +14,10 @@ export class TrackWorld {
   private water?: T.MeshPhysicalMaterial;
   private fountains?: T.Points;
   private rotors: T.Group[] = [];
-  constructor(public course: Course) {
+  constructor(
+    public course: Course,
+    public scenario: TrafficScenario = course.config.trafficPreset || 'free',
+  ) {
     this.build();
   }
   setDaylight(day: boolean) {
@@ -359,6 +364,227 @@ export class TrackWorld {
       roughness: 0.4,
     });
   }
+  private destinationDetails() {
+    const id = this.course.config.id,
+      length = this.course.length;
+    if (id === 'incheon-coast') {
+      for (let z = 200; z < length; z += 170) {
+        const g = this.placed(z, -75),
+          h = 18 + (z % 5) * 8;
+        this.box(g, [25, h, 23], [0, h / 2, 0], this.material('#a5b8bc'));
+        for (const x of [-9, 0, 9])
+          this.box(
+            g,
+            [3, h * 0.8, 23.2],
+            [x, h / 2 + 1, 0],
+            this.material('#638c9c'),
+          );
+      }
+      const airport = this.placed(length * 0.2, -140);
+      this.box(airport, [70, 0.4, 210], [0, 0.2, 0], this.material('#6c797d'));
+      for (let z = -90; z < 100; z += 20)
+        this.box(airport, [1, 0.05, 8], [0, 0.45, z], this.material('#e8e6d5'));
+      const plane = new T.Group();
+      plane.position.set(0, 3, 0);
+      airport.add(plane);
+      this.box(plane, [3, 3, 32], [0, 0, 0], this.material('#e7eef0'));
+      const wing = this.box(
+        plane,
+        [31, 0.35, 6],
+        [0, 0, 2],
+        this.material('#d6e3e8'),
+      );
+      wing.rotation.y = 0.18;
+      this.box(plane, [10, 0.2, 3], [0, 1, 13], this.material('#618da6'));
+      this.box(plane, [0.5, 6, 4], [0, 3, 12], this.material('#618da6'));
+    }
+    if (id === 'busan-coast') {
+      for (let z = 60; z < length; z += 100) {
+        const g = this.placed(z, -60 - (z % 4) * 14),
+          h = 30 + (z % 7) * 12;
+        this.box(
+          g,
+          [19, h, 20],
+          [0, h / 2, 0],
+          this.material(z % 3 ? '#c0b9ad' : '#96b4c4'),
+        );
+        for (let y = 4; y < h; y += 5)
+          this.box(g, [19.2, 0.8, 20.2], [0, y, 0], this.material('#5c899e'));
+        const shade = this.placed(z, 28);
+        this.box(
+          shade,
+          [0.12, 2.5, 0.12],
+          [0, 1.25, 0],
+          this.material('#84745c'),
+        );
+        const umbrella = new T.Mesh(
+          new T.ConeGeometry(2, 0.7, 10),
+          this.material(z % 3 ? '#e78966' : '#e9d18a'),
+        );
+        umbrella.position.y = 2.8;
+        shade.add(umbrella);
+      }
+    }
+    if (id === 'east-coast') {
+      for (const x of [-34, -36])
+        this.ribbon(x, x + 0.14, -0.15, this.material('#81949a'));
+      for (let z = 0; z < length; z += 8) {
+        const g = this.placed(z, -35);
+        this.box(g, [3, 0.12, 0.3], [0, -0.22, 0], this.material('#756c5c'));
+      }
+      for (let z = 170; z < length; z += 210) {
+        const g = this.placed(z, -70);
+        const rock = new T.Mesh(
+          new T.DodecahedronGeometry(18 + (z % 5)),
+          this.material('#7a8883'),
+        );
+        rock.scale.set(1, 1.7, 1);
+        rock.position.y = 8;
+        g.add(rock);
+      }
+    }
+    if (id === 'jeju-coast') {
+      for (let z = 0; z < length; z += 22) {
+        const g = this.placed(z, 16);
+        this.box(g, [1, 1.2, 16], [0, 0.5, 0], this.material('#555c54'));
+      }
+      for (let z = 60; z < length; z += 100) {
+        const g = this.placed(z, -27);
+        this.box(g, [0.6, 7, 0.6], [0, 3.5, 0], this.material('#827655'));
+        for (let i = 0; i < 6; i++) {
+          const leaf = this.box(
+            g,
+            [0.7, 0.15, 6],
+            [Math.sin(i) * 1.8, 7, Math.cos(i) * 1.8],
+            this.material('#547e45'),
+          );
+          leaf.rotation.y = i;
+          leaf.rotation.z = 0.18;
+        }
+      }
+    }
+    if (id === 'namhae-coast') {
+      for (let z = 130; z < length; z += 140) {
+        const g = this.placed(z, -40 - (z % 3) * 18);
+        this.box(g, [12, 7, 10], [0, 3.5, 0], this.material('#e6decb'));
+        const roof = new T.Mesh(
+          new T.ConeGeometry(10, 4, 4),
+          this.material('#bd684c'),
+        );
+        roof.rotation.y = Math.PI / 4;
+        roof.position.y = 8;
+        g.add(roof);
+        this.box(g, [2, 3, 0.05], [0, 3, 5.03], this.material('#426877'));
+      }
+    }
+    if (id === 'seorak-forest')
+      for (let z = 50; z < length; z += 190) {
+        const g = this.placed(z, -120);
+        const rock = new T.Mesh(
+          new T.DodecahedronGeometry(35),
+          this.material('#7c9188'),
+        );
+        rock.scale.set(1, 2.2, 1.1);
+        rock.position.y = 30;
+        g.add(rock);
+      }
+  }
+  private roadEnvironment() {
+    const start = this.course.length * 0.3,
+      end = this.course.length * 0.49;
+    if (this.scenario === 'free') return;
+    for (const z of [start - 160, start - 35]) {
+      const g = this.placed(z, 13);
+      this.box(g, [0.2, 3, 0.2], [0, 1.5, 0], this.material('#6f8286'));
+      const sign = new T.Mesh(
+        new T.PlaneGeometry(5, 1.8),
+        this.text(
+          this.scenario === 'works'
+            ? '도로 공사 · 좌측 통행'
+            : '정체 구간 · 서행',
+          this.scenario === 'works'
+            ? 'RIGHT LANE CLOSED'
+            : 'KEEP YOUR DISTANCE',
+          '#ffcc66',
+        ),
+      );
+      sign.position.y = 3;
+      g.add(sign);
+    }
+    if (this.scenario === 'busy') return;
+    for (let z = start; z < end; z += 14) {
+      const g = this.placed(z, 6.15);
+      this.box(g, [0.65, 0.12, 0.65], [0, 0.06, 0], this.material('#303b3d'));
+      const cone = new T.Mesh(
+        new T.ConeGeometry(0.3, 0.9, 8),
+        this.material('#ed8b35'),
+      );
+      cone.position.y = 0.56;
+      g.add(cone);
+      this.box(g, [0.35, 0.14, 0.35], [0, 0.57, 0], this.material('#ffefd4'));
+    }
+    for (const z of [start + 60, start + 220]) {
+      const g = this.placed(Math.min(z, end - 30), 17);
+      const body = TRAFFIC_BODIES[5];
+      g.add(
+        buildVehicle({ id: 'works-dump', ...body }, this.material(body.color)),
+      );
+      const worker = this.placed(z - 12, 13);
+      this.box(
+        worker,
+        [0.55, 0.65, 0.32],
+        [0, 1.12, 0],
+        this.material('#ffab2f'),
+      );
+      for (const x of [-0.16, 0.16])
+        this.box(
+          worker,
+          [0.2, 0.72, 0.24],
+          [x, 0.43, 0],
+          this.material('#36546b'),
+        );
+      const head = new T.Mesh(
+        new T.SphereGeometry(0.22, 10, 8),
+        this.material('#edccae'),
+      );
+      head.position.y = 1.66;
+      worker.add(head);
+      const helmet = new T.Mesh(
+        new T.SphereGeometry(0.25, 10, 8),
+        this.material('#ffe05b'),
+      );
+      helmet.position.y = 1.79;
+      helmet.scale.y = 0.55;
+      worker.add(helmet);
+      const excavator = this.placed(z + 15, 20),
+        yellow = this.material('#e9ad38'),
+        dark = this.material('#364244');
+      for (const x of [-1, 1])
+        this.box(excavator, [0.6, 0.55, 3.6], [x, 0.3, 0], dark);
+      this.box(excavator, [2.1, 0.75, 2.6], [0, 1, 0], yellow);
+      this.box(
+        excavator,
+        [1, 1.4, 1.2],
+        [-0.45, 1.9, -0.4],
+        this.material('#344f5e'),
+      );
+      const boom = this.box(
+        excavator,
+        [0.4, 3.5, 0.5],
+        [0.6, 2.7, -1.4],
+        yellow,
+      );
+      boom.rotation.x = -0.6;
+      const arm = this.box(
+        excavator,
+        [0.35, 2.5, 0.4],
+        [0.6, 3.1, -3.2],
+        yellow,
+      );
+      arm.rotation.x = 0.7;
+      this.box(excavator, [1, 0.8, 1], [0.6, 1.9, -4], dark);
+    }
+  }
   private build() {
     const { config, length } = this.course;
     const bridge = config.id === 'hangang' || config.theme === 'river';
@@ -597,6 +823,8 @@ export class TrackWorld {
         }
       }
     }
+    this.destinationDetails();
+    this.roadEnvironment();
     config.landmarks.forEach((l) => this.landmark(l));
     for (let s = 200; s < length; s += 450) {
       if (scenic) {

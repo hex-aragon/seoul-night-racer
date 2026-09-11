@@ -1,3 +1,4 @@
+import { getVehicle } from './vehicles';
 import { ROUTES, type RouteId } from './routes';
 export const STORAGE_KEY = 'seoul-midnight-run.profile.v1';
 export type Result = {
@@ -29,6 +30,8 @@ export type Profile = {
     music: number;
     engine: number;
     color: string;
+    vehicle: string;
+    traffic: 'route' | 'free' | 'works' | 'busy';
     route: RouteId;
     transmission: 'auto' | 'manual';
     daylight: boolean;
@@ -50,7 +53,9 @@ export const blankProfile = (): Profile => ({
     music: 0.5,
     engine: 0.65,
     color: '#f31931',
-    route: 'hangang',
+    vehicle: 'ferrari',
+    traffic: 'route',
+    route: 'incheon-coast',
     transmission: 'auto',
     daylight: true,
     peaceful: false,
@@ -92,6 +97,12 @@ export function parseProfile(raw: string | null): Profile {
       ? d.badges.filter((s: unknown) => typeof s === 'string')
       : [];
     if (d.settings) {
+      p.settings.vehicle = getVehicle(d.settings.vehicle).id;
+      p.settings.traffic = ['free', 'works', 'busy'].includes(
+        d.settings.traffic,
+      )
+        ? d.settings.traffic
+        : 'route';
       p.settings.music = Math.min(1, nonnegative(d.settings.music, 0.5));
       p.settings.engine = Math.min(1, nonnegative(d.settings.engine, 0.65));
       if (/^#[\da-f]{6}$/i.test(d.settings.color))

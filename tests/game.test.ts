@@ -151,9 +151,9 @@ test('curve forces move lateral position and can be countersteered', () => {
   assert.notEqual(e.x, before);
 });
 
-test('131 distinct scenic and urban courses have finite geometry and persistent records', () => {
-  assert.equal(ROUTES.length, 131);
-  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 131);
+test('133 distinct scenic and urban courses have finite geometry and persistent records', () => {
+  assert.equal(ROUTES.length, 133);
+  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 133);
   for (const route of ROUTES) {
     const c = getCourse(route.id);
     assert(c.length > 2000);
@@ -307,4 +307,39 @@ test('race timer stops at timeout and obstacles cannot be skipped at high speed'
   run.e.hazardMeshes = [{ visible: true }];
   run.e.simulate(0.025);
   assert.equal(run.e.state.endReason, 'obstacle');
+});
+
+test('a long truck collides at its actual rear extent before a compact car would', () => {
+  const { e } = fixture();
+  e.drive.velocity = 0;
+  e.state.speed = 0;
+  e.traffic = [
+    {
+      z: 105.5,
+      x: 0,
+      speed: 0,
+      length: 7.6,
+      width: 2.4,
+      hit: false,
+      passed: false,
+    },
+  ];
+  e.simulate(0.025);
+  assert.equal(e.state.endReason, 'traffic');
+  const compact = fixture().e;
+  compact.drive.velocity = 0;
+  compact.state.speed = 0;
+  compact.traffic = [
+    {
+      z: 105.5,
+      x: 0,
+      speed: 0,
+      length: 3.65,
+      width: 1.65,
+      hit: false,
+      passed: false,
+    },
+  ];
+  compact.simulate(0.025);
+  assert.equal(compact.state.mode, 'racing');
 });

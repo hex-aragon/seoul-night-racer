@@ -29,6 +29,8 @@ export type RouteConfig = {
   district?: string;
   seed?: number;
   heightScale?: number;
+  featured?: boolean;
+  trafficPreset?: 'free' | 'works' | 'busy';
 };
 const points = (n: number, f: (s: number) => [number, number, number]) =>
   Array.from({ length: n }, (_, i) => new Vector3(...f(i / (n - 1))));
@@ -165,6 +167,15 @@ for (let district = 0; district < 12; district++)
     });
   }
 const scenic = [
+  [
+    'incheon-coast',
+    '인천 영종도 해안',
+    '인천 · 영종대교와 바다',
+    'coast',
+    3700,
+    75,
+    3,
+  ],
   ['east-coast', '동해 해안도로', '강릉 · 바다와 등대', 'coast', 3200, 80, 3],
   ['jeju-coast', '제주 애월 해안', '제주 · 해변과 섬', 'coast', 3500, 120, 4],
   [
@@ -221,6 +232,15 @@ const scenic = [
     150,
     6,
   ],
+  [
+    'busan-coast',
+    '부산 해운대 달맞이길',
+    '부산 · 해안 절벽과 광안대교',
+    'coast',
+    3400,
+    130,
+    5,
+  ],
 ] as const;
 ROUTES.unshift(
   ...scenic.map(
@@ -232,6 +252,8 @@ ROUTES.unshift(
       name,
       subtitle,
       theme,
+      featured: true,
+      trafficPreset: i % 3 === 0 ? 'busy' : i % 3 === 1 ? 'works' : 'free',
       description: '드라이빙 명소의 풍경을 재해석한 가상 코스',
       district: subtitle.split(' · ')[0],
       seed: 200 + i,
@@ -251,7 +273,18 @@ ROUTES.unshift(
             (theme === 'pasture' ? 35 : theme === 'forest' ? 22 : 3),
         -t * length,
       ]),
-      landmarks: [],
+      landmarks:
+        id === 'incheon-coast' || id === 'busan-coast'
+          ? [
+              {
+                id: id + '-bridge',
+                name: id === 'incheon-coast' ? '영종대교' : '광안대교',
+                at: 0.55,
+                side: 130,
+                kind: 'bridge',
+              },
+            ]
+          : [],
     }),
   ),
 );
