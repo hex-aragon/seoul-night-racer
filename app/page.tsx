@@ -457,7 +457,7 @@ export default function Home() {
                   )
                     engine.current.steeringInput = Math.max(
                       -1,
-                      Math.min(1, (e.clientX - wheelStart.current) / 65),
+                      Math.min(1, (e.clientX - wheelStart.current) / 95),
                     );
                 }}
                 onPointerUp={centerWheel}
@@ -754,13 +754,27 @@ export default function Home() {
             <input
               className="route-search"
               aria-label="코스 검색"
-              placeholder="지역·강변·언덕·난이도 검색"
+              placeholder="해안 · 한강 · 숲길 · 대관령 검색"
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setCatalogPage(0);
               }}
             />
+            <div className="scenic-filters">
+              {['전체', '해안', '한강', '숲', '대관령'].map((label) => (
+                <button
+                  key={label}
+                  aria-pressed={query === (label === '전체' ? '' : label)}
+                  onClick={() => {
+                    setQuery(label === '전체' ? '' : label);
+                    setCatalogPage(0);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="catalog-list">
               {filtered
                 .slice(catalogPage * 6, catalogPage * 6 + 6)
@@ -816,7 +830,7 @@ export default function Home() {
               <p>검색 결과가 없습니다. 다른 지역을 입력해 주세요.</p>
             )}
             <p className="route-note">
-              서울 분위기를 재해석한 123개 생성 코스입니다.
+              국내 드라이빙 명소를 재해석한 {ROUTES.length}개 가상 코스입니다.
               <br />
               실제 도로와 경로는 다릅니다.
             </p>

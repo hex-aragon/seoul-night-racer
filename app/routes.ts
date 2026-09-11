@@ -18,7 +18,14 @@ export type RouteConfig = {
   points: Vector3[];
   landmarks: Landmark[];
   target: number;
-  theme?: 'river' | 'hill' | 'city';
+  theme?:
+    | 'river'
+    | 'hill'
+    | 'city'
+    | 'coast'
+    | 'forest'
+    | 'pasture'
+    | 'riverside';
   district?: string;
   seed?: number;
   heightScale?: number;
@@ -157,6 +164,97 @@ for (let district = 0; district < 12; district++)
       landmarks: base.landmarks.map((l) => ({ ...l })),
     });
   }
+const scenic = [
+  ['east-coast', '동해 해안도로', '강릉 · 바다와 등대', 'coast', 3200, 80, 3],
+  ['jeju-coast', '제주 애월 해안', '제주 · 해변과 섬', 'coast', 3500, 120, 4],
+  [
+    'hangang-riverside',
+    '한강 강변 드라이브',
+    '서울 · 강변 공원과 다리',
+    'riverside',
+    3600,
+    80,
+    3,
+  ],
+  [
+    'inje-forest',
+    '인제 자작나무 숲길',
+    '강원 · 흰 나무와 초록 터널',
+    'forest',
+    2900,
+    110,
+    5,
+  ],
+  [
+    'damyang-forest',
+    '담양 메타세쿼이아 길',
+    '전남 · 길게 이어지는 가로수',
+    'forest',
+    3100,
+    55,
+    3,
+  ],
+  [
+    'daegwallyeong',
+    '대관령 목장 드라이브',
+    '강원 · 초원과 양떼 · 풍력발전기',
+    'pasture',
+    3300,
+    125,
+    5,
+  ],
+  [
+    'namhae-coast',
+    '남해 바닷길',
+    '경남 · 푸른 해안과 섬',
+    'coast',
+    3400,
+    140,
+    4,
+  ],
+  [
+    'seorak-forest',
+    '설악 산자락 드라이브',
+    '강원 · 굽이치는 숲과 산',
+    'forest',
+    3200,
+    150,
+    6,
+  ],
+] as const;
+ROUTES.unshift(
+  ...scenic.map(
+    (
+      [id, name, subtitle, theme, length, amplitude, bends],
+      i,
+    ): RouteConfig => ({
+      id,
+      name,
+      subtitle,
+      theme,
+      description: '드라이빙 명소의 풍경을 재해석한 가상 코스',
+      district: subtitle.split(' · ')[0],
+      seed: 200 + i,
+      color:
+        theme === 'coast'
+          ? '#79d5e9'
+          : theme === 'pasture'
+            ? '#c4db8b'
+            : '#8fcaac',
+      sky: '#112734',
+      difficulty: `${bends > 4 ? '노멀' : '이지'} · 자연 풍경`,
+      target: length / 30,
+      points: points(61, (t) => [
+        Math.sin(t * Math.PI * bends) * amplitude,
+        7 +
+          Math.sin(t * Math.PI) *
+            (theme === 'pasture' ? 35 : theme === 'forest' ? 22 : 3),
+        -t * length,
+      ]),
+      landmarks: [],
+    }),
+  ),
+);
 export class Course {
   curve: CatmullRomCurve3;
   length: number;
@@ -194,4 +292,6 @@ export const getCourse = (id: RouteId): Course => {
   if (!cache.has(config.id)) cache.set(config.id, new Course(config));
   return cache.get(config.id)!;
 };
-export const COURSES = ROUTES.slice(0, 3).map((r) => getCourse(r.id));
+export const COURSES = ['hangang', 'namsan', 'seoul'].map((id) =>
+  getCourse(id),
+);

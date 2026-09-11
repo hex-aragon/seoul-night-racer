@@ -11,6 +11,7 @@ export class TrackWorld {
   private blocks = new Map<number, T.Group>();
   private water?: T.MeshPhysicalMaterial;
   private fountains?: T.Points;
+  private rotors: T.Group[] = [];
   constructor(public course: Course) {
     this.build();
   }
@@ -49,6 +50,185 @@ export class TrackWorld {
       }
     });
     if (this.fountains) this.fountains.visible = !day;
+  }
+  private nature(theme: string) {
+    const { length, config } = this.course,
+      coast = theme === 'coast',
+      river = theme === 'riverside',
+      forest = theme === 'forest',
+      pasture = theme === 'pasture';
+    const grass = this.material(
+      pasture ? '#79a954' : forest ? '#38694c' : '#638d58',
+    );
+    this.ribbon(-650, coast || river ? 35 : 650, -0.65, grass);
+    if (coast || river) {
+      this.water = new T.MeshPhysicalMaterial({
+        color: coast ? '#318baa' : '#377f92',
+        metalness: 0.35,
+        roughness: 0.3,
+        envMapIntensity: 0.5,
+      });
+      this.ribbon(35, coast ? 1800 : 430, -3, this.water);
+      this.ribbon(14, 38, -0.55, this.material(coast ? '#d5c69e' : '#6ca765'));
+      if (coast) {
+        this.ribbon(40, 42, -2.8, this.material('#c0e0dc'));
+        this.ribbon(56, 57, -2.85, this.material('#8cc8d2'));
+      } else {
+        this.ribbon(430, 600, -1, grass);
+        for (let z = 50; z < length; z += 140) {
+          const g = this.placed(z, 475);
+          const h = 25 + random(z) * 60;
+          this.box(g, [22, h, 25], [0, h / 2 - 5, 0], this.material('#9eafb5'));
+        }
+      }
+    }
+    const addTree = (z: number, x: number, birch = false) => {
+      const g = this.placed(z, x),
+        h = forest ? 13 : 7;
+      this.box(
+        g,
+        [birch ? 0.55 : 0.8, h, 0.7],
+        [0, h / 2, 0],
+        this.material(birch ? '#d8ded3' : '#735842'),
+      );
+      if (birch)
+        for (let k = 1; k < 6; k++)
+          this.box(
+            g,
+            [0.57, 0.2, 0.72],
+            [0, k * 2, 0],
+            this.material('#5c635d'),
+          );
+      const crown = new T.Mesh(
+        new T.SphereGeometry(forest ? 5 : 4, 8, 6),
+        this.material(z % 3 ? '#3e8055' : '#6e9c50'),
+      );
+      crown.position.y = h + 1;
+      crown.scale.y = forest ? 1.7 : 1;
+      g.add(crown);
+    };
+    for (let z = 0; z < length; z += forest ? 24 : 64) {
+      if (forest) {
+        for (const side of [-1, 1])
+          for (let row = 0; row < 2; row++)
+            addTree(
+              z + row * 8,
+              side * (23 + row * 22 + random(z) * 5),
+              config.id === 'inje-forest',
+            );
+      } else if (!pasture) addTree(z, -24 - random(z) * 16);
+      if (pasture) {
+        for (const side of [-1, 1]) {
+          const g = this.placed(z, side * 19);
+          this.box(
+            g,
+            [0.24, 1.5, 0.24],
+            [0, 0.75, 0],
+            this.material('#e3d6b5'),
+          );
+          this.box(
+            g,
+            [0.15, 0.15, 64],
+            [0, 0.85, -32],
+            this.material('#d6c7a5'),
+          );
+          const hill = this.placed(z + 25, side * (100 + random(z) * 140));
+          const mound = new T.Mesh(new T.SphereGeometry(1, 14, 8), grass);
+          mound.scale.set(80 + random(z) * 60, 14 + random(z + 2) * 22, 100);
+          mound.position.y = -7;
+          hill.add(mound);
+        }
+        if (z % 128 === 0) {
+          const g = this.placed(z, 32 + random(z) * 22),
+            wool = this.material('#eeeadd');
+          const body = new T.Mesh(new T.SphereGeometry(1, 10, 8), wool);
+          body.scale.set(0.8, 0.7, 1.15);
+          body.position.y = 1;
+          g.add(body);
+          this.box(g, [0.48, 0.5, 0.6], [0, 1.3, -1], this.material('#e0d9c8'));
+          for (const x of [-0.4, 0.4])
+            for (const zz of [-0.65, 0.65])
+              this.box(
+                g,
+                [0.16, 0.65, 0.16],
+                [x, 0.35, zz],
+                this.material('#645949'),
+              );
+        }
+      }
+    }
+    if (pasture) {
+      for (let z = 430; z < length; z += 550) {
+        const g = this.placed(z, -65);
+        this.box(g, [2, 42, 2], [0, 21, 0], this.material('#e8e7dc'));
+        const rotor = new T.Group();
+        rotor.position.copy(this.course.sample(z, -65).position);
+        rotor.position.y += 42;
+        for (let j = 0; j < 3; j++) {
+          const blade = new T.Group();
+          blade.rotation.z = (j * Math.PI * 2) / 3;
+          this.box(blade, [1.5, 19, 0.4], [0, 10, 0], this.material('#e8e7dc'));
+          rotor.add(blade);
+        }
+        this.root.add(rotor);
+        this.rotors.push(rotor);
+      }
+      const barn = this.placed(length * 0.35, 55);
+      this.box(barn, [18, 9, 24], [0, 4.5, 0], this.material('#9d574b'));
+      const roof = new T.Mesh(
+        new T.ConeGeometry(17, 7, 4),
+        this.material('#575f61'),
+      );
+      roof.rotation.y = Math.PI / 4;
+      roof.scale.z = 1.3;
+      roof.position.y = 12;
+      barn.add(roof);
+    }
+    if (coast) {
+      const lighthouse = this.placed(length * 0.38, 52);
+      const tower = new T.Mesh(
+        new T.CylinderGeometry(3, 4, 23, 12),
+        this.material('#eee4ca'),
+      );
+      tower.position.y = 10;
+      lighthouse.add(tower);
+      this.box(lighthouse, [6, 4, 6], [0, 23, 0], this.material('#c66651'));
+      this.box(
+        lighthouse,
+        [4, 2, 4],
+        [0, 24, 0],
+        this.material('#f5d59d', true),
+      );
+      for (let z = 100; z < length; z += 350) {
+        const island = this.placed(z, 270 + random(z) * 220);
+        const rock = new T.Mesh(
+          new T.SphereGeometry(1, 10, 6),
+          this.material('#71816b'),
+        );
+        rock.scale.set(60, 14, 45);
+        rock.position.y = -9;
+        island.add(rock);
+      }
+    }
+    if (river) {
+      const g = this.placed(length * 0.42, 160),
+        stone = this.material('#b9c4c1');
+      this.box(g, [360, 1.5, 12], [0, 14, 0], stone);
+      for (let x = -120; x < 180; x += 60)
+        this.box(g, [4, 19, 5], [x, 4, 0], stone);
+      for (let x = -100; x <= 100; x += 200) {
+        this.box(g, [3, 32, 3], [x, 28, 0], stone);
+        for (let k = 0; k < 5; k++) {
+          const cable = this.box(
+            g,
+            [0.18, 36, 0.18],
+            [x + (k - 2) * 12, 25, 0],
+            stone,
+          );
+          cable.rotation.z = (k - 2) * 0.32;
+        }
+      }
+    }
   }
   private material(color: string, emissive = false) {
     const key = color + emissive;
@@ -183,6 +363,9 @@ export class TrackWorld {
     const { config, length } = this.course;
     const bridge = config.id === 'hangang' || config.theme === 'river';
     const mountain = config.id === 'namsan' || config.theme === 'hill';
+    const scenic = ['coast', 'forest', 'pasture', 'riverside'].includes(
+      config.theme || '',
+    );
     const road = new T.MeshPhysicalMaterial({
       color: '#111c2a',
       roughness: 0.42,
@@ -197,6 +380,10 @@ export class TrackWorld {
       [0, -1, -length / 2],
       this.material(mountain ? '#102723' : bridge ? '#101e28' : '#17232f'),
     );
+    if (scenic) {
+      ground.visible = false;
+      this.nature(config.theme!);
+    }
     if (bridge) {
       ground.visible = false;
       this.water = new T.MeshPhysicalMaterial({
@@ -225,18 +412,39 @@ export class TrackWorld {
         0.02,
         this.material('#e2bd6c'),
       );
-      this.ribbon(
-        side * 11.1 - 0.08,
-        side * 11.1 + 0.08,
-        0.62,
-        this.material(bridge ? '#6ef0e6' : '#657f90', bridge),
-      );
-      this.ribbon(
-        side * 11.1 - 0.1,
-        side * 11.1 + 0.1,
-        1.1,
-        this.material('#97b1c2'),
-      );
+      const rail = (start: number, end: number) => {
+        this.ribbon(
+          side * 11.1 - 0.08,
+          side * 11.1 + 0.08,
+          0.62,
+          this.material('#657f90'),
+          start,
+          end,
+        );
+        this.ribbon(
+          side * 11.1 - 0.1,
+          side * 11.1 + 0.1,
+          1.1,
+          this.material('#97b1c2'),
+          start,
+          end,
+        );
+      };
+      if (side < 0) rail(0, length);
+      else
+        for (let start = 0; start < length; start += 500) {
+          rail(start, Math.min(length, start + 120));
+          if (start + 320 < length)
+            rail(start + 320, Math.min(length, start + 500));
+          this.ribbon(
+            11,
+            18,
+            -0.02,
+            road,
+            start + 120,
+            Math.min(length, start + 320),
+          );
+        }
       if (mountain)
         this.ribbon(
           side < 0 ? -32 : 14,
@@ -253,7 +461,7 @@ export class TrackWorld {
         this.box(frame, [0.13, 0.025, 6], [lane, 0.025, -3], stripe);
     }
     const facade = Array.from({ length: 6 }, (_, i) => this.facade(i));
-    for (let s = 0, index = 0; s < length; s += 40, index++) {
+    for (let s = 0, index = 0; !scenic && s < length; s += 40, index++) {
       for (const side of [-1, 1]) {
         const g = this.placed(s, side * 12);
         this.box(g, [0.14, 7.6, 0.14], [0, 3.8, 0], pole);
@@ -391,6 +599,17 @@ export class TrackWorld {
     }
     config.landmarks.forEach((l) => this.landmark(l));
     for (let s = 200; s < length; s += 450) {
+      if (scenic) {
+        const marker = this.placed(s, -15);
+        this.box(marker, [0.18, 3.4, 0.18], [0, 1.7, 0], pole);
+        const board = new T.Mesh(
+          new T.PlaneGeometry(5, 1.3),
+          this.text(config.name, 'DRIVE SLOW · ENJOY THE VIEW', config.color),
+        );
+        board.position.y = 3;
+        marker.add(board);
+        continue;
+      }
       const g = this.placed(s, 0),
         next = config.landmarks.find((l) => l.at * length > s);
       this.box(g, [0.25, 8, 0.25], [-10, 4, 0], pole);
@@ -399,7 +618,7 @@ export class TrackWorld {
       const sign = new T.Mesh(
         new T.PlaneGeometry(8, 2.3),
         this.text(
-          next ? next.name : 'FINISH ↑',
+          next ? next.name : scenic ? config.name : 'FINISH ↑',
           `${Math.round((length - s) / 100) / 10} KM TO FINISH`,
           config.color,
         ),
@@ -569,6 +788,7 @@ export class TrackWorld {
     label.add(sign);
   }
   animate(t: number) {
+    for (const rotor of this.rotors) rotor.rotation.z = t * 0.00025;
     if (this.fountains)
       (this.fountains.material as T.PointsMaterial).opacity =
         0.65 + Math.sin(t * 0.002) * 0.15;

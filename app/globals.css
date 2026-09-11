@@ -49,3 +49,5 @@
 @media(max-width:370px){.driver-wheel{width:80px}.driver-wheel .steering-wheel{width:80px;height:80px}.instrument-cluster{width:130px}.driver-dash{gap:5px;padding:12px 5px 10px}}
 @media(max-height:500px) and (min-width:701px){.driver-dash{transform:translateX(-50%) scale(.8);transform-origin:bottom;bottom:8px}}
 @media(max-width:370px){.driver-wheel{width:76px}.driver-wheel .steering-wheel{width:76px;height:76px}.instrument-cluster{width:120px}.driver-pedals{gap:5px}.driver-pedals .brake-pedal{width:44px}.driver-pedals .gas-pedal{width:34px}.drive-direction span{font-size:7px}}
+.driver-wheel svg{transition:transform 100ms linear;will-change:transform}.scenic-filters{display:flex;gap:5px;margin:0 0 10px}.scenic-filters button{flex:1;border:1px solid #789a9850;background:#163036;color:#b7d4cd;font-size:11px;padding:7px 4px;border-radius:7px}.scenic-filters button[aria-pressed=true]{background:#cae0ce;color:#214337}
+@media(prefers-reduced-motion:reduce){.driver-wheel svg{transition:none}}

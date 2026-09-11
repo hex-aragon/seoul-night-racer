@@ -1,4 +1,11 @@
 import {
+  createMotion,
+  stepTraffic,
+  rng,
+  smoothSteering,
+  type TrafficMotion,
+} from './traffic';
+import {
   newDrive,
   consumeFuel,
   stepDrive,
@@ -92,7 +99,7 @@ const rand = (n: number) => {
   const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return x - Math.floor(x);
 };
-type Traffic = {
+type Traffic = TrafficMotion & {
   mesh: T.Group;
   x: number;
   z: number;
@@ -177,6 +184,7 @@ export class RaceEngine {
     clearcoatRoughness: 0.1,
   });
   private traffic: Traffic[] = [];
+  private trafficRandom = rng(Math.floor(Math.random() * 2147483647));
   private model?: T.Object3D;
   private flames: T.Mesh[] = [];
   private headlights: T.SpotLight[] = [];
@@ -389,7 +397,18 @@ export class RaceEngine {
         const under = new T.PointLight('#ff2046', 0.5, 5, 2);
         under.position.set(0, 0.4, 2);
         this.player.add(under);
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 8; i++) {
+          if (i % 4 === 3) {
+            const mesh = this.motorcycle();
+            this.scene.add(mesh);
+            this.traffic.push({
+              ...createMotion(i, this.trafficRandom),
+              mesh,
+              hit: false,
+              passed: false,
+            });
+            continue;
+          }
           const mesh = new T.Group();
           const clone = model.clone(true);
           clone.traverse((o) => {
@@ -425,14 +444,13 @@ export class RaceEngine {
           mesh.add(lod);
           this.scene.add(mesh);
           this.traffic.push({
+            ...createMotion(i, this.trafficRandom),
             mesh,
-            x: [-8, -4, 0, 4, 8][i % 5],
-            z: 85 + i * 67,
             hit: false,
             passed: false,
-            speed: 18 + rand(i) * 13,
           });
         }
+        for (const car of this.traffic) this.addSignals(car);
         this.state.loaded = true;
         this.update({ ...this.state });
       },
@@ -464,10 +482,75 @@ export class RaceEngine {
     this.snapCamera();
     this.update({ ...this.state });
   };
+  private motorcycle() {
+    const g = new T.Group(),
+      black = this.material('#17252d'),
+      paint = this.material('#d78939'),
+      rider = this.material('#354b61');
+    for (const z of [-0.82, 0.82]) {
+      const wheel = new T.Mesh(
+        new T.CylinderGeometry(0.36, 0.36, 0.2, 14),
+        black,
+      );
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(0, 0.37, z);
+      g.add(wheel);
+      this.box(g, [0.09, 0.55, 0.12], [0, 0.67, z], this.material('#b7c6cf'));
+    }
+    this.box(g, [0.46, 0.35, 1.2], [0, 0.85, 0], paint);
+    this.box(g, [0.4, 0.15, 0.6], [0, 1.08, 0.2], black);
+    this.box(g, [0.48, 0.64, 0.32], [0, 1.4, 0.05], rider);
+    this.box(g, [0.85, 0.09, 0.1], [0, 1.2, -0.62], black);
+    for (const x of [-0.27, 0.27]) {
+      this.box(g, [0.15, 0.65, 0.18], [x, 0.84, 0.25], black);
+      const arm = this.box(g, [0.13, 0.5, 0.13], [x, 1.35, -0.3], rider);
+      arm.rotation.x = -0.65;
+    }
+    const helmet = new T.Mesh(
+      new T.SphereGeometry(0.25, 12, 10),
+      this.material('#e1e6dc'),
+    );
+    helmet.position.set(0, 1.95, -0.12);
+    g.add(helmet);
+    this.box(g, [0.29, 0.1, 0.08], [0, 1.98, -0.34], black);
+    this.box(
+      g,
+      [0.2, 0.13, 0.06],
+      [0, 0.85, -1.05],
+      this.material('#eaffff', '#eaffff'),
+    );
+    this.box(
+      g,
+      [0.22, 0.12, 0.05],
+      [0, 0.85, 1.05],
+      this.material('#ff3434', '#ff3434'),
+    );
+    return g;
+  }
+  private addSignals(car: Traffic) {
+    const nodes: T.Mesh[] = [];
+    for (const side of [-1, 1])
+      for (const end of [-1, 1]) {
+        const lamp = this.box(
+          car.mesh,
+          [car.kind === 'motorcycle' ? 0.13 : 0.24, 0.13, 0.08],
+          [
+            side * (car.kind === 'motorcycle' ? 0.28 : 0.8),
+            0.72,
+            end * (car.kind === 'motorcycle' ? 1.08 : 2.3),
+          ],
+          this.material('#ffab24', '#ff9d00'),
+        );
+        lamp.userData.side = side;
+        lamp.visible = false;
+        nodes.push(lamp);
+      }
+    car.mesh.userData.signals = nodes;
+  }
   private resetTraffic() {
+    this.trafficRandom = rng(Math.floor(Math.random() * 2147483647));
     this.traffic.forEach((c, i) => {
-      c.z = 90 + i * 85;
-      c.x = [-8, -4, 0, 4, 8][i % 5];
+      Object.assign(c, createMotion(i, this.trafficRandom));
       c.hit = false;
       c.passed = false;
     });
@@ -631,13 +714,13 @@ export class RaceEngine {
       this.steeringInput +
       (k.has('d') || k.has('arrowright') ? 1 : 0) -
       (k.has('a') || k.has('arrowleft') ? 1 : 0);
-    this.steer = T.MathUtils.damp(this.steer, clamp(input, -1, 1), 7, dt);
+    this.steer = smoothSteering(this.steer, clamp(input, -1, 1), s.speed, dt);
     const curve = this.course.curvature(s.distance);
     this.x +=
-      this.steer * (s.velocity * 0.05) * dt -
+      this.steer * (s.velocity * 0.043) * dt -
       curve * (s.speed / 3.6) ** 2 * (this.peaceful ? 0.006 : 0.045) * dt;
-    if (this.peaceful && Math.abs(input) < 0.02)
-      this.x = T.MathUtils.damp(this.x, 0, 0.5, dt);
+    if (this.peaceful && Math.abs(this.x) > 9.3 && Math.abs(input) < 0.02)
+      this.x = T.MathUtils.damp(this.x, Math.sign(this.x) * 9, 1, dt);
     s.steering = this.steer;
     s.offset = this.x;
     s.curve = curve;
@@ -666,13 +749,21 @@ export class RaceEngine {
     this.furthest = Math.max(this.furthest, s.distance);
     for (const car of this.traffic) {
       const old = car.z - s.distance;
-      car.z += car.speed * dt;
+      if (car.kind)
+        stepTraffic(
+          car,
+          dt,
+          this.traffic,
+          { z: s.distance, x: this.x, speed: s.speed / 3.6 },
+          this.trafficRandom,
+        );
+      else car.z += car.speed * dt;
       const delta = car.z - s.distance;
       if (
         !car.hit &&
-        Math.min(old, delta) < 4.4 &&
-        Math.max(old, delta) > -4.4 &&
-        Math.abs(car.x - this.x) < 1.95
+        Math.min(old, delta) < (car.kind === 'motorcycle' ? 3 : 4.4) &&
+        Math.max(old, delta) > -(car.kind === 'motorcycle' ? 3 : 4.4) &&
+        Math.abs(car.x - this.x) < (car.kind === 'motorcycle' ? 1.3 : 1.95)
       ) {
         car.hit = true;
         if (this.peaceful) {
@@ -705,9 +796,21 @@ export class RaceEngine {
         Math.abs(car.x - this.x) < 2.5
       )
         this.drive.velocity = Math.min(this.drive.velocity, car.speed * 3.6);
-      if (delta < -55 || delta > 800) {
-        car.z = s.distance + 500 + rand(s.time + car.speed) * 160;
-        car.x = [-8, -4, 0, 4, 8][Math.floor(rand(s.time + car.speed) * 5)];
+      if (delta < -180 || delta > 1350) {
+        if (car.kind) {
+          const fresh = createMotion(
+            this.traffic.indexOf(car),
+            this.trafficRandom,
+          );
+          fresh.z = fresh.merge
+            ? Math.ceil((s.distance + 650 - 180) / 500) * 500 + 180
+            : fresh.kind === 'motorcycle'
+              ? s.distance - 160
+              : s.distance + 680 + this.trafficRandom() * 100;
+          Object.assign(car, fresh);
+        } else {
+          car.z = s.distance + 680;
+        }
         car.hit = false;
         car.passed = false;
       }
@@ -747,8 +850,25 @@ export class RaceEngine {
     this.traffic.forEach((c) => {
       const p = this.course.sample(c.z, c.x);
       c.mesh.position.copy(p.position);
-      c.mesh.rotation.set(p.pitch, p.heading, 0, 'YXZ');
-      c.mesh.visible = c.z - s.distance < 700 && c.z - s.distance > -65;
+      const turning =
+        c.phase === 'change'
+          ? Math.sin(
+              Math.PI *
+                Math.min(1, c.elapsed / (c.kind === 'motorcycle' ? 2.5 : 3.8)),
+            ) * c.signal
+          : 0;
+      c.mesh.rotation.set(
+        p.pitch,
+        p.heading - turning * 0.13,
+        c.kind === 'motorcycle' ? -turning * 0.18 : 0,
+        'YXZ',
+      );
+      for (const lamp of (c.mesh.userData.signals || []) as T.Mesh[])
+        lamp.visible =
+          c.signal !== 0 &&
+          lamp.userData.side === c.signal &&
+          Math.floor(s.time * 2.5) % 2 === 0;
+      c.mesh.visible = c.z - s.distance < 700 && c.z - s.distance > -125;
     });
     this.wheels.forEach((w) => {
       if (s.mode === 'racing') w.rotation.x -= ((s.velocity / 3.6) * dt) / 0.34;

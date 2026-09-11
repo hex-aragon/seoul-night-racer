@@ -149,9 +149,9 @@ test('curve forces move lateral position and can be countersteered', () => {
   assert.notEqual(e.x, before);
 });
 
-test('123 distinct urban courses have finite geometry and persistent records', () => {
-  assert.equal(ROUTES.length, 123);
-  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 123);
+test('131 distinct scenic and urban courses have finite geometry and persistent records', () => {
+  assert.equal(ROUTES.length, 131);
+  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 131);
   for (const route of ROUTES) {
     const c = getCourse(route.id);
     assert(c.length > 2000);

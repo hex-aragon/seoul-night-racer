@@ -1,4 +1,4 @@
-# Seoul / Midnight Run — Chapter 06
+# Seoul / Midnight Run — Chapter 07
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
@@ -10,7 +10,7 @@ Three.js browser arcade racing with a detailed Ferrari 458 Italia, original city
 - **남산 와인딩**: continuous S bends, hills, trees, N Seoul Tower.
 - **서울 랜드마크 투어**: city bends, Gwanghwamun, Cheonggyecheon, Lotte World Tower.
 
-All 123 maps are available immediately: the three landmark routes plus 120 deterministic Seoul district variations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
+All 131 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and eight scenic destinations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
 
 ## Controls
 
@@ -70,3 +70,11 @@ Daylight adjusts sky, fog, sun lighting and building glass textures; night resto
 Fuel is a game-scaled percentage, not a real Ferrari consumption estimate. Idling, travel and acceleration consume fuel. Below 20%, the panel shows a low-fuel indicator and a refuel button. At zero, engine audio cuts out and the car coasts to a stop; braking continues to work. Refuelling is available only below 1 km/h and restores the tank. A new drive starts with full fuel. Fuel consumption and position freeze while paused.
 
 Tests cover fuel consumption/depletion and default migration in addition to drivetrain, collisions and progression. Browser validation covers visible controls, both cameras, braking, refuelling, reverse, settings, 320px layout and simultaneous touch with cancellation.
+
+## Scenic drives and live traffic
+
+Eight new fictional courses reinterpret East Coast, Jeju Aewol, Namhae, Han River riverside, Inje birch forest, Damyang tree avenue, Daegwallyeong ranch and Seorak mountain forest. They use distinct coast/water, river/park, woodland and pasture scenery. The ranch includes sheep, a barn and animated wind turbines. These are inspired game environments, not geographic road reproductions.
+
+Every course has six cars and two modeled motorcycles. A new seeded traffic sequence is chosen for each drive. Vehicles signal at least 1.5 seconds before smoothly changing lanes, check the destination gap and wait when blocked. Shoulder entries align with gaps in the right barrier; one motorcycle approaches from behind and another merges. Following traffic slows behind occupied lanes and the player. Vehicles recycle well away from the immediate driving area.
+
+Steering uses a nonlinear input curve, speed-sensitive gain, a bounded response rate and smooth centering of the wheel. Releasing the wheel no longer pulls the vehicle toward the road center; peaceful assistance only nudges it away from the outer edge. The visible wheel interpolates between HUD updates.
