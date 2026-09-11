@@ -8,6 +8,7 @@ export type Result = {
   passed: number;
   nearMisses: number;
   maxSpeed: number;
+  skillXP?: number;
   landmarks: string[];
 };
 export type RecordEntry = {
@@ -34,6 +35,7 @@ export type Profile = {
     peaceful: boolean;
     cruise: boolean;
     controlsVersion: 2;
+    racingVersion: 8;
   };
 };
 export const blankProfile = (): Profile => ({
@@ -51,9 +53,10 @@ export const blankProfile = (): Profile => ({
     route: 'hangang',
     transmission: 'auto',
     daylight: true,
-    peaceful: true,
+    peaceful: false,
     cruise: false,
     controlsVersion: 2,
+    racingVersion: 8,
   },
 });
 const nonnegative = (x: unknown, fallback = 0) =>
@@ -99,7 +102,8 @@ export function parseProfile(raw: string | null): Profile {
     p.settings.transmission =
       d.settings?.transmission === 'manual' ? 'manual' : 'auto';
     p.settings.daylight = d.settings?.daylight !== false;
-    p.settings.peaceful = d.settings?.peaceful !== false;
+    p.settings.peaceful =
+      d.settings?.racingVersion === 8 && d.settings?.peaceful === true;
     p.settings.cruise =
       d.settings?.controlsVersion === 2 && d.settings?.cruise === true;
     return p;
@@ -146,6 +150,7 @@ export function awardRun(profile: Profile, result: Result, target: number) {
   const xp = Math.max(
     0,
     Math.floor(result.distance / 15) +
+      (result.skillXP || 0) +
       result.passed * 12 +
       result.nearMisses * 30 +
       (result.completed ? 250 + stars * 75 : 0) +

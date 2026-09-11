@@ -1,3 +1,4 @@
+import { createHazards, sweptHazardHit, type Hazard } from './challenge';
 import {
   createMotion,
   stepTraffic,
@@ -8,6 +9,7 @@ import {
 import {
   newDrive,
   consumeFuel,
+  shiftDrive,
   stepDrive,
   selectGear,
   type Selector,
@@ -36,6 +38,12 @@ export type Snapshot = {
   steering: number;
   fuel: number;
   bearing: number;
+  drift: boolean;
+  driftSeconds: number;
+  dodged: number;
+  timeLeft: number;
+  checkpoints: number;
+  warning: string;
   throttle: boolean;
   braking: boolean;
   distance: number;
@@ -56,7 +64,7 @@ export type Snapshot = {
   maxSpeed: number;
   landmarks: string[];
   notice: string;
-  endReason: 'finish' | 'traffic' | 'barrier' | '';
+  endReason: 'finish' | 'traffic' | 'barrier' | 'obstacle' | 'timeout' | '';
   offset: number;
   curve: number;
 };
@@ -70,6 +78,12 @@ export const initial = (route: RouteId = 'hangang'): Snapshot => ({
   steering: 0,
   fuel: 100,
   bearing: 0,
+  drift: false,
+  driftSeconds: 0,
+  dodged: 0,
+  timeLeft: getCourse(route).length / 30 + 30,
+  checkpoints: 0,
+  warning: '',
   throttle: false,
   braking: false,
   distance: 0,
@@ -111,7 +125,11 @@ export class RaceEngine {
   state = initial();
   keys = new Set<string>();
   drive = newDrive();
-  peaceful = true;
+  peaceful = false;
+  private lateralVelocity = 0;
+  private hazards: Hazard[] = [];
+  private hazardRoot = new T.Group();
+  private hazardMeshes: T.Group[] = [];
   cruise = false;
   daylight = true;
   configureExperience = (
@@ -138,6 +156,7 @@ export class RaceEngine {
       }
     });
     this.world.setDaylight(daylight);
+    this.hazardRoot.visible = !peaceful;
   };
   steeringInput = 0;
   private furthest = 0;
@@ -154,16 +173,14 @@ export class RaceEngine {
     this.update({ ...this.state });
   };
   shift = (delta: number) => {
-    if (this.drive.transmission !== 'manual' || this.drive.selector !== 'D')
-      return;
-    const gear = clamp(this.drive.gear + delta, 1, 7);
-    if (Math.abs(this.drive.velocity) > gear * 46) {
+    if (!shiftDrive(this.drive, delta)) {
       this.state.notice = '속도를 낮춘 뒤 저단으로 변속하세요';
-      this.noticeUntil = this.state.time + 3;
+      this.noticeUntil = this.state.time + 2;
       return;
     }
-    this.drive.gear = gear;
-    this.state.gear = gear;
+    this.state.gear = this.drive.gear;
+    this.state.notice = `${this.drive.transmission === 'auto' ? 'AT 패들' : 'MT'} · ${this.drive.gear}단`;
+    this.noticeUntil = this.state.time + 1.5;
     this.update({ ...this.state });
   };
   audio = new DriveAudio();
@@ -236,6 +253,8 @@ export class RaceEngine {
     this.scene.add(this.player);
     this.world = new TrackWorld(this.course);
     this.scene.add(this.world.root);
+    this.scene.add(this.hazardRoot);
+    this.buildHazards();
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(
@@ -472,6 +491,7 @@ export class RaceEngine {
     this.world.dispose();
     this.world = new TrackWorld(this.course);
     this.scene.add(this.world.root);
+    this.buildHazards();
     this.scene.background = new T.Color(this.course.config.sky);
     this.scene.fog = new T.FogExp2(this.course.config.sky, 0.0032);
     this.state = { ...initial(route), loaded, error };
@@ -547,6 +567,65 @@ export class RaceEngine {
       }
     car.mesh.userData.signals = nodes;
   }
+  private buildHazards() {
+    this.hazardRoot.traverse((o) => {
+      if (o instanceof T.Mesh) o.geometry.dispose();
+    });
+    this.hazardRoot.clear();
+    this.hazardMeshes = [];
+    this.hazards = createHazards(
+      this.course.length,
+      Math.floor(Math.random() * 100000),
+    );
+    for (const hazard of this.hazards) {
+      const g = new T.Group();
+      const f = this.course.sample(hazard.z, hazard.x);
+      g.position.copy(f.position);
+      g.rotation.set(f.pitch, f.heading, 0, 'YXZ');
+      if (hazard.kind === 'cones') {
+        for (const x of [-0.7, 0.7]) {
+          this.box(
+            g,
+            [0.65, 0.12, 0.65],
+            [x, 0.06, 0],
+            this.material('#282f33'),
+          );
+          const cone = new T.Mesh(
+            new T.ConeGeometry(0.3, 0.9, 10),
+            this.material('#f38a35'),
+          );
+          cone.position.set(x, 0.55, 0);
+          g.add(cone);
+          this.box(
+            g,
+            [0.35, 0.14, 0.35],
+            [x, 0.57, 0],
+            this.material('#f6efd7'),
+          );
+        }
+      } else {
+        this.box(g, [3, 1.05, 0.6], [0, 0.53, 0], this.material('#ea6545'));
+        for (const x of [-1, 0, 1])
+          this.box(
+            g,
+            [0.45, 0.65, 0.65],
+            [x, 0.64, 0],
+            this.material('#f7ebcb'),
+          );
+        for (const x of [-1, 1])
+          this.box(g, [0.25, 0.35, 1], [x, 0.17, 0], this.material('#354347'));
+      }
+      const lamp = new T.Mesh(
+        new T.SphereGeometry(0.1, 8, 6),
+        this.material('#ffb236', '#ffb236'),
+      );
+      lamp.position.set(0, 1.25, 0);
+      g.add(lamp);
+      this.hazardRoot.add(g);
+      this.hazardMeshes.push(g);
+    }
+    this.hazardRoot.visible = !this.peaceful;
+  }
   private resetTraffic() {
     this.trafficRandom = rng(Math.floor(Math.random() * 2147483647));
     this.traffic.forEach((c, i) => {
@@ -561,6 +640,8 @@ export class RaceEngine {
     const transmission = this.drive.transmission;
     this.drive = { ...newDrive(), transmission };
     this.furthest = 0;
+    this.lateralVelocity = 0;
+    this.buildHazards();
     this.state = {
       ...initial(route),
       loaded: true,
@@ -664,7 +745,7 @@ export class RaceEngine {
     s.endReason = reason;
     s.speed = 0;
     s.boost = false;
-    if (reason !== 'finish') {
+    if (reason !== 'finish' && reason !== 'timeout') {
       s.health = 0;
       this.hit = 1;
       this.audio.crash();
@@ -679,6 +760,7 @@ export class RaceEngine {
       passed: this.peaceful ? 0 : s.passed,
       nearMisses: this.peaceful ? 0 : s.nearMisses,
       maxSpeed: s.maxSpeed,
+      skillXP: s.dodged * 15 + Math.floor(s.driftSeconds * 3),
       landmarks: [...s.landmarks],
     });
     this.update({ ...s });
@@ -701,8 +783,7 @@ export class RaceEngine {
     s.fuel = consumeFuel(s.fuel, s.speed, gas && !brake, dt);
     s.boost = false;
     stepDrive(this.drive, gas, brake, dt);
-    if (this.peaceful)
-      this.drive.velocity = clamp(this.drive.velocity, -28, 120);
+
     s.speed = Math.abs(this.drive.velocity);
     s.velocity = this.drive.velocity;
     s.gear = this.drive.gear;
@@ -716,9 +797,27 @@ export class RaceEngine {
       (k.has('a') || k.has('arrowleft') ? 1 : 0);
     this.steer = smoothSteering(this.steer, clamp(input, -1, 1), s.speed, dt);
     const curve = this.course.curvature(s.distance);
-    this.x +=
-      this.steer * (s.velocity * 0.043) * dt -
-      curve * (s.speed / 3.6) ** 2 * (this.peaceful ? 0.006 : 0.045) * dt;
+    s.drift =
+      !this.peaceful &&
+      (k.has(' ') || (brake && s.speed > 80)) &&
+      s.speed > 60 &&
+      Math.abs(this.steer) > 0.18;
+    if (s.drift) {
+      this.drive.velocity *= Math.exp(-0.18 * dt);
+      s.driftSeconds += dt;
+      s.score += Math.round(70 * dt);
+    }
+    const lateralTarget =
+      this.steer *
+        (s.speed > 0 ? (2 + s.speed * 0.032) * Math.sign(s.velocity) : 0) -
+      curve * (s.speed / 3.6) ** 2 * (this.peaceful ? 0.006 : 0.035);
+    this.lateralVelocity = T.MathUtils.damp(
+      this.lateralVelocity || 0,
+      lateralTarget,
+      s.drift ? 3.5 : 11,
+      dt,
+    );
+    this.x += this.lateralVelocity * dt;
     if (this.peaceful && Math.abs(this.x) > 9.3 && Math.abs(input) < 0.02)
       this.x = T.MathUtils.damp(this.x, Math.sign(this.x) * 9, 1, dt);
     s.steering = this.steer;
@@ -736,6 +835,7 @@ export class RaceEngine {
         return;
       }
     }
+    const previousDistance = s.distance;
     s.distance = clamp(
       s.distance + (s.velocity / 3.6) * dt,
       0,
@@ -747,6 +847,55 @@ export class RaceEngine {
       s.speed = 0;
     }
     this.furthest = Math.max(this.furthest, s.distance);
+    s.warning = '';
+    if (!this.peaceful) {
+      s.timeLeft -= dt;
+      if (
+        s.distance > (this.course.length * (s.checkpoints + 1)) / 4 &&
+        s.checkpoints < 3
+      ) {
+        s.checkpoints++;
+        s.timeLeft += 5;
+        s.notice = '체크포인트 +5초';
+        this.noticeUntil = s.time + 2;
+      }
+      const futureCurve = this.course.curvature(s.distance + 85);
+      if (Math.abs(futureCurve) > 0.0025)
+        s.warning =
+          futureCurve > 0 ? '우측 급커브 · 감속' : '좌측 급커브 · 감속';
+      for (let i = 0; i < (this.hazards || []).length; i++) {
+        const h = this.hazards[i];
+        if (h.hit) continue;
+        if (h.z > s.distance && h.z - s.distance < 160)
+          s.warning = `${h.x < -2 ? '왼쪽' : h.x > 2 ? '오른쪽' : '중앙'} 차로 장애물 · ${Math.round(h.z - s.distance)}m`;
+        if (sweptHazardHit(h, previousDistance, s.distance, this.x)) {
+          h.hit = true;
+          this.hazardMeshes[i].visible = false;
+          s.combo = 1;
+          if (h.kind === 'barrier') {
+            this.finish('obstacle');
+            return;
+          }
+          s.health = Math.max(0, s.health - 20);
+          this.drive.velocity *= 0.65;
+          this.hit = 0.25;
+          this.audio.crash();
+          s.notice = '콘 접촉 · 감속';
+          this.noticeUntil = s.time + 1.5;
+        } else if (!h.passed && s.distance > h.z + 5) {
+          h.passed = true;
+          s.dodged++;
+          s.combo = Math.min(5, s.combo + 1);
+          s.score += 150 * s.combo;
+          s.timeLeft += 1;
+        }
+      }
+      if (s.timeLeft <= 0) {
+        this.finish('timeout');
+        return;
+      }
+    }
+
     for (const car of this.traffic) {
       const old = car.z - s.distance;
       if (car.kind)
@@ -843,8 +992,8 @@ export class RaceEngine {
     this.player.position.y += 0.025;
     this.player.rotation.set(
       f.pitch,
-      f.heading - this.steer * 0.1 * (s.speed / 150),
-      -this.steer * 0.025,
+      f.heading - this.steer * (s.drift ? 0.38 : 0.1) * (s.speed / 150),
+      -this.steer * (s.drift ? 0.09 : 0.025),
       'YXZ',
     );
     this.traffic.forEach((c) => {
@@ -941,6 +1090,7 @@ export class RaceEngine {
       s.boost,
       s.mode,
       s.rpm,
+      s.drift,
     );
     this.composer.render();
     if (t - this.ui > 85) {

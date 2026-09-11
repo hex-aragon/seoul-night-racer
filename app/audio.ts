@@ -6,6 +6,12 @@ export class DriveAudio {
   private engineBus?: GainNode;
   private oscillators: OscillatorNode[] = [];
   private filter?: BiquadFilterNode;
+  private fallback?: GainNode;
+  private engineSamples: { source: AudioBufferSourceNode; gain: GainNode }[] =
+    [];
+  private tire?: GainNode;
+  private tireSource?: AudioBufferSourceNode;
+  private sampleError = false;
   private noise?: AudioBuffer;
   private musicSource?: AudioBufferSourceNode;
   private disposed = false;
@@ -36,6 +42,10 @@ export class DriveAudio {
     this.filter.frequency.value = 850;
     this.filter.Q.value = 0.7;
     this.filter.connect(this.engineBus);
+    this.fallback = c.createGain();
+    this.fallback.gain.value = 0.25;
+    this.fallback.connect(this.filter);
+    void this.loadEngineSamples();
     const real = new Float32Array(24),
       imag = new Float32Array(24);
     for (let i = 1; i < 24; i++)
@@ -48,7 +58,7 @@ export class DriveAudio {
       else o.type = 'triangle';
       g.gain.value = i === 2 ? 0.3 : 0.75;
       o.connect(g);
-      g.connect(this.filter);
+      g.connect(this.fallback);
       o.start();
       this.oscillators.push(o);
     }
@@ -60,6 +70,19 @@ export class DriveAudio {
       data[i] = ((seed / 4294967296) * 2 - 1) * 0.8;
     }
     this.noise = noise;
+    this.tire = c.createGain();
+    this.tire.gain.value = 0;
+    const tireFilter = c.createBiquadFilter();
+    tireFilter.type = 'bandpass';
+    tireFilter.frequency.value = 1700;
+    tireFilter.Q.value = 0.8;
+    this.tireSource = c.createBufferSource();
+    this.tireSource.buffer = noise;
+    this.tireSource.loop = true;
+    this.tireSource.connect(tireFilter);
+    tireFilter.connect(this.tire);
+    this.tire.connect(compressor);
+    this.tireSource.start();
     void this.renderMusic()
       .then((buffer) => {
         if (this.disposed) return;
@@ -72,6 +95,55 @@ export class DriveAudio {
       })
       .catch((error) => console.warn('Music rendering failed', error));
   }
+  private async loadEngineSamples() {
+    try {
+      const c = this.ctx!;
+      const buffers = await Promise.all(
+        ['engine-idle.wav', 'engine-load.wav'].map(async (name) => {
+          const response = await fetch(
+            import.meta.env.BASE_URL + 'audio/' + name,
+          );
+          if (!response.ok) throw Error('Engine sample unavailable');
+          return c.decodeAudioData(await response.arrayBuffer());
+        }),
+      );
+      if (this.disposed) return;
+      this.engineSamples = buffers.map((buffer) => {
+        // Overlap the seam, retaining the original recorded timbre.
+        const overlap = Math.min(
+          Math.floor(buffer.sampleRate * 0.035),
+          Math.floor(buffer.length / 8),
+        );
+        const loop = c.createBuffer(
+          buffer.numberOfChannels,
+          buffer.length - overlap,
+          buffer.sampleRate,
+        );
+        for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+          const src = buffer.getChannelData(ch),
+            out = loop.getChannelData(ch);
+          out.set(src.subarray(overlap));
+          for (let i = 0; i < overlap; i++) {
+            const f = i / overlap;
+            out[out.length - overlap + i] =
+              src[src.length - overlap + i] * (1 - f) + src[i] * f;
+          }
+        }
+        const source = c.createBufferSource(),
+          gain = c.createGain();
+        source.buffer = loop;
+        source.loop = true;
+        gain.gain.value = 0;
+        source.connect(gain);
+        gain.connect(this.filter!);
+        source.start();
+        return { source, gain };
+      });
+      this.fallback!.gain.setTargetAtTime(0, c.currentTime, 0.12);
+    } catch {
+      this.sampleError = true;
+    }
+  }
   setVolumes(music: number, engine: number) {
     this.musicVolume = music;
     this.engineVolume = engine;
@@ -83,6 +155,7 @@ export class DriveAudio {
     boost: boolean,
     mode: string,
     driveRpm?: number,
+    drift = false,
   ) {
     if (!this.ctx) return;
     const c = this.ctx;
@@ -110,7 +183,35 @@ export class DriveAudio {
         (gear === 1
           ? 1000 + Math.min(1, speed / 46) * 6400
           : 4200 + Math.max(0, Math.min(1, (speed - low) / 46)) * 3200);
-    const shift = c.currentTime < this.shiftUntil ? 0.76 : 1;
+    const shift = c.currentTime < this.shiftUntil ? 0.83 : 1;
+    if (this.engineSamples.length === 2) {
+      const blend = Math.max(0, Math.min(1, (rpm - 1600) / 4200));
+      this.engineSamples[0].source.playbackRate.setTargetAtTime(
+        Math.max(0.65, Math.min(1.65, 0.65 + rpm / 5200)) * shift,
+        c.currentTime,
+        0.07,
+      );
+      this.engineSamples[1].source.playbackRate.setTargetAtTime(
+        Math.max(0.48, Math.min(1.65, 0.48 + rpm / 8500)) * shift,
+        c.currentTime,
+        0.06,
+      );
+      this.engineSamples[0].gain.gain.setTargetAtTime(
+        (1 - blend) * 0.7,
+        c.currentTime,
+        0.1,
+      );
+      this.engineSamples[1].gain.gain.setTargetAtTime(
+        (0.25 + blend * 0.85) * (throttle ? 1 : 0.65),
+        c.currentTime,
+        0.08,
+      );
+    }
+    this.tire?.gain.setTargetAtTime(
+      active && drift ? this.engineVolume * 0.11 : 0,
+      c.currentTime,
+      0.06,
+    );
     this.oscillators[0].frequency.setTargetAtTime(
       (rpm / 60) * 4 * shift,
       c.currentTime,
@@ -286,6 +387,8 @@ export class DriveAudio {
   get diagnostics() {
     return {
       context: this.ctx?.state || 'locked',
+      engineSamples: this.engineSamples.length,
+      engineSampleError: this.sampleError,
       musicReady: !!this.musicSource,
       position: this.ctx?.currentTime || 0,
     };
@@ -293,6 +396,8 @@ export class DriveAudio {
   dispose() {
     this.disposed = true;
     this.musicSource?.stop();
+    this.engineSamples.forEach((s) => s.source.stop());
+    this.tireSource?.stop();
     this.oscillators.forEach((o) => o.stop());
     void this.ctx?.close();
   }

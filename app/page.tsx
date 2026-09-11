@@ -285,6 +285,14 @@ export default function Home() {
       </fieldset>
       <fieldset>
         <legend>소리</legend>
+        <a
+          className="sound-credit"
+          href={`${import.meta.env.BASE_URL}AUDIO-CREDITS.md`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          실제 녹음 기반 엔진 · 음원 출처
+        </a>
         <label>
           시티팝 BGM
           <input
@@ -357,7 +365,7 @@ export default function Home() {
           <br />
           W/S: 액셀/브레이크 · A/D: 조향 · Q/E: 수동 변속
           <br />
-          C: 시점 · Esc: 설정 · 화면 두 번 탭: 설정
+          Space: 드리프트 · Q/E: 변속 (AT에서도 가능) · C: 시점 · Esc: 설정
           <br />
           방향과 P 잠금은 차량이 정지한 뒤 바꿀 수 있어요.
         </p>
@@ -436,6 +444,20 @@ export default function Home() {
               <Settings2 size={19} />
             </button>
           </nav>
+          {!profile.settings.peaceful && (
+            <div className="race-ribbon">
+              <b className={hud.timeLeft < 20 ? 'urgent' : ''}>
+                {Math.max(0, Math.ceil(hud.timeLeft))}s
+              </b>
+              <span>
+                {hud.drift
+                  ? 'DRIFT'
+                  : `회피 ${hud.dodged} · 추월 ${hud.passed}`}{' '}
+                <small>×{hud.combo}</small>
+              </span>
+              <strong>{hud.warning || '체크포인트를 향해 달리세요'}</strong>
+            </div>
+          )}
           <section className="driver-dash" aria-label="운전 조작부">
             <div className="driver-wheel">
               <div
@@ -457,7 +479,11 @@ export default function Home() {
                   )
                     engine.current.steeringInput = Math.max(
                       -1,
-                      Math.min(1, (e.clientX - wheelStart.current) / 95),
+                      Math.min(
+                        1,
+                        (e.clientX - wheelStart.current) /
+                          Math.max(28, e.currentTarget.clientWidth * 0.32),
+                      ),
                     );
                 }}
                 onPointerUp={centerWheel}
@@ -479,6 +505,21 @@ export default function Home() {
               <span>
                 핸들 <small>A / D</small>
               </span>
+              <div className="steer-buttons">
+                <button aria-label="왼쪽 조향" {...pedal('arrowleft')}>
+                  ◀
+                </button>
+                <button aria-label="오른쪽 조향" {...pedal('arrowright')}>
+                  ▶
+                </button>
+              </div>
+              <button
+                className="drift-button"
+                data-active={hud.drift}
+                {...pedal(' ')}
+              >
+                드리프트 <small>SPACE</small>
+              </button>
             </div>
             <div className="instrument-cluster">
               <div className="instrument-main">
@@ -542,7 +583,12 @@ export default function Home() {
                       }[g]
                     }
                     aria-pressed={hud.selector === g}
-                    disabled={hud.speed > 1 && g !== hud.selector && g !== 'N'}
+                    disabled={
+                      hud.speed > 1 &&
+                      g !== hud.selector &&
+                      g !== 'N' &&
+                      !(g === 'D' && hud.selector === 'N' && hud.velocity > 0)
+                    }
                     onClick={() => engine.current?.selectGear(g)}
                   >
                     {g}
@@ -563,7 +609,7 @@ export default function Home() {
                   {profile.settings.transmission === 'auto' ? 'AT' : 'MT'}
                 </button>
               </div>
-              {profile.settings.transmission === 'manual' && (
+              {
                 <div className="dash-shift">
                   <button
                     aria-label="기어 내리기"
@@ -572,7 +618,10 @@ export default function Home() {
                   >
                     −
                   </button>
-                  <span>{hud.gear}단 · Q / E</span>
+                  <span>
+                    {hud.transmission === 'auto' ? 'AT 패들' : 'MT'} ·{' '}
+                    {hud.gear}단
+                  </span>
                   <button
                     aria-label="기어 올리기"
                     disabled={hud.selector !== 'D'}
@@ -581,7 +630,7 @@ export default function Home() {
                     ＋
                   </button>
                 </div>
-              )}
+              }
               {hud.fuel <= 20 ? (
                 <div className="fuel-help" role="status">
                   <span>
@@ -596,11 +645,12 @@ export default function Home() {
                 </div>
               ) : (
                 <small className="driver-hint">
-                  {profile.settings.cruise
-                    ? '정속 주행 켜짐'
-                    : hud.speed > 1
-                      ? '방향 전환은 정차 후'
-                      : '액셀을 밟아 출발하세요'}
+                  {hud.notice ||
+                    (profile.settings.cruise
+                      ? '정속 주행 켜짐'
+                      : hud.speed > 1
+                        ? '방향 전환은 정차 후'
+                        : '액셀을 밟아 출발하세요')}
                 </small>
               )}
             </div>
@@ -682,11 +732,11 @@ export default function Home() {
           <section className="garage-intro">
             <div className="eyebrow">SEOUL / A QUIETER DRIVE</div>
             <h1>
-              서두르지 않아도,
+              코너를 읽고,
               <br />
-              <em>좋은 하루.</em>
+              <em>한계까지.</em>
             </h1>
-            <p>햇살 아래 강변, 또는 도시의 밤. 천천히 달려보세요.</p>
+            <p>산길 타임어택. 변속하고, 피하고, 코너를 공략하세요.</p>
             <div className="driver-profile">
               <div>
                 <Trophy size={18} />
@@ -745,6 +795,21 @@ export default function Home() {
             <div className="enter-hint">
               {hud.error || '하단 핸들·페달로 운전 · 카메라 버튼으로 시점 전환'}
             </div>
+            <button
+              className="touge-start"
+              onClick={() => {
+                select('namsan');
+                settings({
+                  daylight: false,
+                  peaceful: false,
+                  cruise: false,
+                  transmission: 'auto',
+                });
+                start();
+              }}
+            >
+              남산 야간 타임어택
+            </button>
           </section>
           <section className="route-picker" aria-label="맵 선택">
             <div className="picker-heading">
@@ -908,10 +973,14 @@ export default function Home() {
             </span>
             <h2>
               {hud.endReason === 'finish'
-                ? '기분 좋은 드라이브였습니다.'
+                ? '코스를 공략했습니다.'
                 : hud.endReason === 'traffic'
                   ? '차량과 충돌했습니다.'
-                  : '가드레일과 충돌했습니다.'}
+                  : hud.endReason === 'timeout'
+                    ? '제한 시간이 끝났습니다.'
+                    : hud.endReason === 'obstacle'
+                      ? '방호벽에 충돌했습니다.'
+                      : '가드레일과 충돌했습니다.'}
             </h2>
             <p>
               {hud.endReason === 'finish'

@@ -15,7 +15,7 @@ test('steering is continuous, frame-rate independent and gentler at speed', () =
   for (let i = 0; i < 30; i++) b = smoothSteering(b, 1, 80, 1 / 30);
   assert(Math.abs(a - b) < 0.02);
   assert(smoothSteering(0, 1, 240, 0.1) < smoothSteering(0, 1, 20, 0.1));
-  assert(Math.abs(smoothSteering(1, -1, 80, 0.025) - 1) <= 0.06 + 0.0001);
+  assert(Math.abs(smoothSteering(1, -1, 80, 0.025) - 1) <= 0.125 + 0.0001);
 });
 test('traffic signals first then crosses continuously, refusing occupied lanes', () => {
   const random = rng(3),

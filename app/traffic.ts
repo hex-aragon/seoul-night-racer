@@ -144,9 +144,10 @@ export function smoothSteering(
   speed: number,
   dt: number,
 ) {
+  const magnitude = Math.min(1, Math.abs(input));
   const target =
-    (Math.sign(input) * Math.pow(Math.min(1, Math.abs(input)), 1.35)) /
-    (1 + Math.abs(speed) / 260);
-  const delta = (target - current) * (1 - Math.exp(-5 * dt));
-  return current + Math.max(-2.4 * dt, Math.min(2.4 * dt, delta));
+    (Math.sign(input) * (0.8 * magnitude + 0.2 * magnitude * magnitude)) /
+    (1 + Math.abs(speed) / 650);
+  const delta = (target - current) * (1 - Math.exp(-10 * dt));
+  return current + Math.max(-5 * dt, Math.min(5 * dt, delta));
 }

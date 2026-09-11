@@ -3,6 +3,8 @@ import {
   stepDrive,
   selectGear,
   consumeFuel,
+  shiftDrive,
+  GEAR_LIMITS,
 } from '../app/drivetrain';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -190,10 +192,10 @@ test('manual gear limits speed until shifted, auto upshifts, steering cannot mov
   d.transmission = 'manual';
   for (let i = 0; i < 100; i++) stepDrive(d, true, false, 0.1);
   assert.equal(d.gear, 1);
-  assert.equal(d.velocity, 46);
+  assert.equal(d.velocity, GEAR_LIMITS[0]);
   d.gear = 2;
   for (let i = 0; i < 100; i++) stepDrive(d, true, false, 0.1);
-  assert.equal(d.velocity, 92);
+  assert.equal(d.velocity, GEAR_LIMITS[1]);
   d.transmission = 'auto';
   stepDrive(d, true, false, 0.1);
   assert.equal(d.gear, 3);
@@ -232,11 +234,11 @@ test('peaceful drive cruises gently, forgives collisions and stays on the road',
   for (let i = 0; i < 50; i++) e.simulate(0.025);
   assert.equal(e.state.speed, 0);
 });
-test('experience settings migrate to quiet daytime defaults and persist explicit choices', () => {
+test('experience settings migrate to racing defaults and persist explicit choices', () => {
   const p = parseProfile(
     JSON.stringify({ version: 1, settings: { route: 'hangang' } }),
   );
-  assert(p.settings.daylight && p.settings.peaceful && !p.settings.cruise);
+  assert(p.settings.daylight && !p.settings.peaceful && !p.settings.cruise);
   p.settings.daylight = false;
   p.settings.peaceful = false;
   p.settings.cruise = false;
@@ -266,4 +268,43 @@ test('manual pedal default migrates once and explicit cruise preference survives
   assert.equal(p.settings.cruise, false);
   p.settings.cruise = true;
   assert.equal(parseProfile(JSON.stringify(p)).settings.cruise, true);
+});
+
+test('automatic drivetrain passes 120 and reaches top gear; AT paddles work while moving', () => {
+  const d = newDrive();
+  for (let i = 0; i < 1200; i++) stepDrive(d, true, false, 0.025);
+  assert(d.velocity > 300);
+  assert.equal(d.gear, 7);
+  d.velocity = 110;
+  d.gear = 3;
+  assert(shiftDrive(d, -1) === false);
+  assert(shiftDrive(d, 1));
+  assert.equal(d.gear, 4);
+  stepDrive(d, true, false, 0.025);
+  assert.equal(d.gear, 4);
+  assert((d.autoHold || 0) > 2);
+});
+test('neutral can re-engage forward while rolling without allowing unsafe reverse', () => {
+  const d = newDrive();
+  d.velocity = 150;
+  assert(selectGear(d, 'N'));
+  assert(selectGear(d, 'D'));
+  assert(d.gear >= 4);
+  assert(!selectGear(d, 'R'));
+});
+test('race timer stops at timeout and obstacles cannot be skipped at high speed', () => {
+  const { e, endings } = fixture();
+  e.state.timeLeft = 0.01;
+  e.peaceful = false;
+  e.simulate(0.025);
+  assert.equal(e.state.endReason, 'timeout');
+  assert.equal(endings.length, 1);
+  const run = fixture();
+  run.e.peaceful = false;
+  run.e.hazards = [
+    { id: 0, z: 101, x: 0, kind: 'barrier', hit: false, passed: false },
+  ];
+  run.e.hazardMeshes = [{ visible: true }];
+  run.e.simulate(0.025);
+  assert.equal(run.e.state.endReason, 'obstacle');
 });

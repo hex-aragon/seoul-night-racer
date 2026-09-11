@@ -23,6 +23,8 @@ export type DriveState = {
   transmission: Transmission;
   gear: number;
   rpm: number;
+  autoHold?: number;
+  shiftTime?: number;
 };
 export const newDrive = (): DriveState => ({
   velocity: 0,
@@ -32,10 +34,37 @@ export const newDrive = (): DriveState => ({
   rpm: 900,
 });
 export function selectGear(d: DriveState, selector: Selector): boolean {
-  if (Math.abs(d.velocity) > 1 && selector !== d.selector && selector !== 'N')
+  if (
+    Math.abs(d.velocity) > 1 &&
+    selector !== d.selector &&
+    selector !== 'N' &&
+    !(selector === 'D' && d.selector === 'N' && d.velocity > 0)
+  )
     return false;
+  if (selector === 'D' && d.selector === 'N')
+    d.gear = Math.min(
+      7,
+      Math.max(
+        1,
+        GEAR_LIMITS.findIndex((limit) => limit >= Math.abs(d.velocity)) + 1,
+      ),
+    );
   d.selector = selector;
   if (selector === 'P') d.velocity = 0;
+  return true;
+}
+export const GEAR_LIMITS = [65, 102, 145, 190, 238, 282, 320];
+export function shiftDrive(d: DriveState, delta: number) {
+  const gear = Math.max(1, Math.min(7, d.gear + delta));
+  if (
+    d.selector !== 'D' ||
+    gear === d.gear ||
+    Math.abs(d.velocity) > GEAR_LIMITS[gear - 1]
+  )
+    return false;
+  d.gear = gear;
+  d.shiftTime = 0.16;
+  d.autoHold = d.transmission === 'auto' ? 3 : 0;
   return true;
 }
 export function stepDrive(
@@ -47,34 +76,49 @@ export function stepDrive(
 ) {
   const v = Math.abs(d.velocity),
     direction = d.selector === 'R' ? -1 : 1;
-  if (d.transmission === 'auto' && d.selector === 'D')
-    d.gear = Math.min(spec.forwardGears, Math.max(1, 1 + Math.floor(v / 46)));
+  d.autoHold = Math.max(0, (d.autoHold || 0) - dt);
+  d.shiftTime = Math.max(0, (d.shiftTime || 0) - dt);
+  if (
+    d.transmission === 'auto' &&
+    d.selector === 'D' &&
+    !d.autoHold &&
+    !d.shiftTime
+  ) {
+    if (d.gear < spec.forwardGears && v > GEAR_LIMITS[d.gear - 1] * 0.92) {
+      d.gear++;
+      d.shiftTime = 0.16;
+    } else if (d.gear > 1 && v < GEAR_LIMITS[d.gear - 2] * 0.57) {
+      d.gear--;
+      d.shiftTime = 0.12;
+    }
+  }
   const cap =
     d.selector === 'R'
       ? spec.reverseLimit
       : spec.powertrain === 'electric'
         ? spec.maxSpeed
-        : Math.min(spec.maxSpeed, d.gear * 46);
+        : Math.min(spec.maxSpeed, GEAR_LIMITS[d.gear - 1]);
   const engaged = d.selector === 'D' || d.selector === 'R';
   if (d.selector === 'P') d.velocity = 0;
   else if (brake)
     d.velocity = Math.sign(d.velocity) * Math.max(0, v - 145 * dt);
-  else if (gas && engaged) {
+  else if (gas && engaged && !d.shiftTime) {
     const acceleration =
       spec.acceleration *
-      (d.selector === 'R' ? 0.45 : Math.max(0.3, 1 - (d.gear - 1) * 0.09));
-    d.velocity = direction * Math.min(cap, Math.max(0, v + acceleration * dt));
+      (d.selector === 'R' ? 0.45 : Math.max(0.32, 1 - (d.gear - 1) * 0.105));
+    d.velocity = direction * Math.min(cap, v + acceleration * dt);
   } else
     d.velocity =
       Math.sign(d.velocity) *
-      Math.max(0, v - (engaged ? 12 + spec.regen : 3) * dt);
+      Math.max(0, v - (engaged ? 8 + spec.regen : 3) * dt);
   d.rpm =
     spec.powertrain === 'electric'
       ? 0
       : Math.min(
-          8500,
+          8400,
           900 +
-            (Math.abs(d.velocity) / (d.selector === 'R' ? 28 : d.gear * 46)) *
+            (Math.abs(d.velocity) /
+              (d.selector === 'R' ? 28 : GEAR_LIMITS[d.gear - 1])) *
               7000 +
             (gas && !engaged ? 3500 : 0),
         );
