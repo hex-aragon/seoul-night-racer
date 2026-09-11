@@ -1,4 +1,4 @@
-import { VEHICLES, PAINTS, getVehicle, type Vehicle } from './vehicles';
+import { VEHICLES, PAINTS, getVehicle } from './vehicles';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -94,54 +94,6 @@ function RouteMap({
     </svg>
   );
 }
-function CarSilhouette({
-  vehicle,
-  color,
-}: {
-  vehicle: Vehicle;
-  color: string;
-}) {
-  const tall = vehicle.style === 'suv',
-    short = vehicle.style === 'compact';
-  return (
-    <svg className="car-silhouette" viewBox="0 0 180 66" aria-hidden="true">
-      <ellipse cx="90" cy="56" rx="78" ry="5" fill="#0b1c2860" />
-      <path
-        d={
-          tall
-            ? 'M12 44 L17 22 L38 20 L53 8 L130 8 L150 23 L167 27 L172 48 L12 48 Z'
-            : short
-              ? 'M20 44 L27 33 L50 30 L63 13 L115 13 L139 32 L159 37 L161 49 L19 49 Z'
-              : 'M8 43 L20 32 L49 29 L69 14 L111 14 L139 30 L166 36 L172 49 L8 49 Z'
-        }
-        fill={color}
-        stroke="#edf6f666"
-        strokeWidth="1.2"
-      />
-      <path
-        d={
-          tall
-            ? 'M45 22 L57 12 L126 12 L140 24 Z'
-            : 'M58 29 L72 18 L108 18 L129 30 Z'
-        }
-        fill="#233e51"
-      />
-      <path d="M90 17 L90 30" stroke={color} strokeWidth="3" />
-      <path
-        d="M17 39 L32 38 M151 38 L166 40"
-        stroke="#eaf4f5"
-        strokeWidth="3"
-      />
-      {[43, 137].map((x) => (
-        <g key={x}>
-          <circle cx={x} cy="49" r="12" fill="#15242c" />
-          <circle cx={x} cy="49" r="7" fill="#a7bbc7" />
-          <circle cx={x} cy="49" r="3" fill="#3b5260" />
-        </g>
-      ))}
-    </svg>
-  );
-}
 export default function Home() {
   const canvas = useRef<HTMLCanvasElement>(null),
     engine = useRef<RaceEngine | null>(null),
@@ -151,10 +103,7 @@ export default function Home() {
   const [hud, setHud] = useState(() => initial()),
     [profile, setProfile] = useState(blankProfile),
     [reward, setReward] = useState<ReturnType<typeof awardRun> | null>(null),
-    [query, setQuery] = useState(''),
-    [featuredOnly, setFeaturedOnly] = useState(true),
-    [showroom, setShowroom] = useState(false),
-    [catalogPage, setCatalogPage] = useState(0),
+    [turning, setTurning] = useState(false),
     [soundPanel, setSoundPanel] = useState(false),
     [storageError, setStorageError] = useState(false);
   const store = (p: Profile) => {
@@ -216,7 +165,6 @@ export default function Home() {
   }, []);
   const start = () => {
     setReward(null);
-    setShowroom(false);
     setSoundPanel(false);
     engine.current?.start();
   };
@@ -260,11 +208,6 @@ export default function Home() {
     onKeyUp: () => engine.current?.keys.delete(key),
     onBlur: () => engine.current?.keys.delete(key),
   });
-  const filtered = ROUTES.filter(
-    (r) =>
-      (!featuredOnly || r.featured) &&
-      `${r.name} ${r.subtitle} ${r.difficulty}`.includes(query.trim()),
-  );
   const vehicle = getVehicle(profile.settings.vehicle),
     electric = vehicle.spec.powertrain === 'electric';
   useEffect(() => {
@@ -286,6 +229,31 @@ export default function Home() {
     active = hud.mode === 'racing' || hud.mode === 'paused',
     level = levelInfo(profile.xp),
     record = profile.records[hud.route];
+  const turnStart = useRef({ x: 0, y: 0 });
+  const chooseVehicle = (id: string) =>
+    settings({
+      vehicle: id,
+      color: getVehicle(id).color,
+      transmission: 'auto',
+    });
+  const cycleVehicle = (delta: number) =>
+    chooseVehicle(
+      VEHICLES[
+        (VEHICLES.findIndex((v) => v.id === vehicle.id) +
+          delta +
+          VEHICLES.length) %
+          VEHICLES.length
+      ].id,
+    );
+  useEffect(() => {
+    document
+      .querySelector('.brand-tab[aria-pressed="true"]')
+      ?.scrollIntoView({
+        block: 'nearest',
+        inline: 'center',
+        behavior: 'smooth',
+      });
+  }, [vehicle.id]);
   const preferences = () => (
     <div className="preferences">
       {storageError && (
@@ -293,6 +261,23 @@ export default function Home() {
           저장 공간을 사용할 수 없어 이번 세션에만 설정이 유지됩니다.
         </p>
       )}
+      <fieldset>
+        <legend>도로 상황</legend>
+        <select
+          aria-label="도로 상황"
+          value={profile.settings.traffic}
+          onChange={(e) =>
+            settings({
+              traffic: e.target.value as Profile['settings']['traffic'],
+            })
+          }
+        >
+          <option value="route">코스별 추천 상황</option>
+          <option value="free">일상 교통</option>
+          <option value="works">도로 공사</option>
+          <option value="busy">퇴근길 정체</option>
+        </select>
+      </fieldset>
       <fieldset>
         <legend>풍경</legend>
         <div className="choice-row">
@@ -780,78 +765,119 @@ export default function Home() {
         </aside>
       )}
       {hud.mode === 'ready' && (
-        <>
-          <section
-            className={`garage-intro fleet-garage ${showroom ? 'showroom-hidden' : ''}`}
-          >
-            <h1>오늘은 어디까지?</h1>
-            <p>차를 고르고, 한국의 드라이빙 명소로.</p>
-            <div className="fleet-heading">
-              <h2>내 차 고르기</h2>
-              <button
-                className="preview-toggle"
-                onClick={() => setShowroom(true)}
-              >
-                3D로 보기
-              </button>
-            </div>
-            <div className="fleet-grid" aria-label="차량 선택">
+        <div className="showroom-ui">
+          <header className="showroom-header">
+            <a
+              className="showroom-wordmark"
+              href="#"
+              aria-label="드라이빙 차고"
+            >
+              Seoul / Drive
+            </a>
+            <nav className="brand-rail" aria-label="브랜드 선택">
               {VEHICLES.map((v) => (
                 <button
+                  className="brand-tab"
                   key={v.id}
-                  className="fleet-car"
-                  aria-label={`${v.brand} ${v.name}`}
                   aria-pressed={vehicle.id === v.id}
-                  onClick={() =>
-                    settings({
-                      vehicle: v.id,
-                      color: v.color,
-                      transmission: 'auto',
-                    })
-                  }
+                  onClick={() => chooseVehicle(v.id)}
                 >
-                  <CarSilhouette
-                    vehicle={v}
-                    color={
-                      vehicle.id === v.id ? profile.settings.color : v.color
-                    }
-                  />
-                  <strong>{v.brand}</strong>
-                  <small>
-                    {v.style === 'suv'
-                      ? 'SUV'
-                      : v.spec.powertrain === 'electric'
-                        ? '전기차'
-                        : v.style === 'sedan'
-                          ? '세단'
-                          : v.style === 'compact'
-                            ? '컴팩트'
-                            : '스포츠'}
-                  </small>
+                  {v.brand}
                 </button>
               ))}
-            </div>
-            <div className="vehicle-summary">
-              <strong>
-                {vehicle.brand} {vehicle.name}
-              </strong>
-              <span>{vehicle.detail}</span>
-              <small>
-                게임 최고 {vehicle.spec.maxSpeed} km/h ·{' '}
-                {electric
-                  ? '전기 / 회생제동'
-                  : `AT·MT ${vehicle.spec.forwardGears}단`}
-              </small>
-            </div>
-            <div className="paint-options" aria-label="차량 색상">
-              {PAINTS.map(([value, label]) => (
+            </nav>
+            <button
+              className="showroom-settings"
+              aria-label="드라이브 설정"
+              onClick={() => setSoundPanel(!soundPanel)}
+            >
+              <Settings2 size={20} />
+            </button>
+          </header>
+          <div className="showroom-title" aria-live="polite">
+            <span>{vehicle.brand}</span>
+            <h1>{vehicle.name}</h1>
+            <p>
+              {electric
+                ? '전기 구동 · 회생제동'
+                : `AT / MT · ${vehicle.spec.forwardGears}단`}{' '}
+              <span>최고 {vehicle.spec.maxSpeed} km/h</span>
+            </p>
+          </div>
+          <div
+            className={`showroom-touch ${turning ? 'turning' : ''}`}
+            role="region"
+            aria-label="차량 360도 미리보기. 드래그하거나 방향키로 회전"
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              turnStart.current = { x: e.clientX, y: e.clientY };
+              setTurning(true);
+            }}
+            onPointerMove={(e) => {
+              if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
+              engine.current?.orbitShowroom(
+                e.clientX - turnStart.current.x,
+                e.clientY - turnStart.current.y,
+              );
+              turnStart.current = { x: e.clientX, y: e.clientY };
+            }}
+            onPointerUp={() => setTurning(false)}
+            onPointerCancel={() => setTurning(false)}
+            onLostPointerCapture={() => setTurning(false)}
+            onKeyDown={(e) => {
+              if (
+                ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(
+                  e.key,
+                )
+              ) {
+                e.preventDefault();
+                e.stopPropagation();
+                engine.current?.orbitShowroom(
+                  e.key === 'ArrowLeft' ? -55 : e.key === 'ArrowRight' ? 55 : 0,
+                  e.key === 'ArrowUp' ? -20 : e.key === 'ArrowDown' ? 20 : 0,
+                );
+              }
+            }}
+          />
+          <button
+            className="vehicle-arrow previous"
+            aria-label="이전 차량"
+            onClick={() => cycleVehicle(-1)}
+          >
+            ‹
+          </button>
+          <button
+            className="vehicle-arrow next"
+            aria-label="다음 차량"
+            onClick={() => cycleVehicle(1)}
+          >
+            ›
+          </button>
+          <div className="showroom-load" role="status">
+            {hud.error ? (
+              <>
+                <span>{hud.error}</span>
                 <button
-                  key={value}
+                  onClick={() => engine.current?.selectVehicle(vehicle.id)}
+                >
+                  다시 불러오기
+                </button>
+              </>
+            ) : !hud.loaded ? (
+              '상세 모델 불러오는 중…'
+            ) : null}
+          </div>
+          <div className="showroom-paint">
+            <span>드래그해서 360° 둘러보기</span>
+            <div className="paint-options" aria-label="차량 색상">
+              {PAINTS.map(([color, label]) => (
+                <button
+                  key={color}
                   aria-label={label}
-                  title={label}
-                  aria-pressed={profile.settings.color === value}
-                  style={{ background: value }}
-                  onClick={() => settings({ color: value })}
+                  aria-pressed={profile.settings.color === color}
+                  style={{ background: color }}
+                  onClick={() => settings({ color })}
                 />
               ))}
               <label className="custom-paint" title="직접 색상 선택">
@@ -864,222 +890,67 @@ export default function Home() {
                 <span>+</span>
               </label>
             </div>
-            <div className="departure-summary">
-              {course.config.name}
-              <span>
-                {profile.settings.daylight ? '낮 드라이브' : '야간 드라이브'}
-              </span>
+          </div>
+          <section className="trip-tray" aria-label="드라이빙 코스 선택">
+            <div className="trip-heading">
+              <h2>어디로 떠날까요?</h2>
+              <label>
+                전체 코스
+                <select
+                  aria-label="전체 코스 선택"
+                  value={hud.route}
+                  onChange={(e) => select(e.target.value)}
+                >
+                  {ROUTES.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
-            <button
-              className="start-button"
-              disabled={!hud.loaded || !!hud.error}
-              onClick={start}
-            >
-              {hud.error
-                ? '3D 로드 실패'
-                : hud.loaded
-                  ? '이 코스로 출발'
-                  : '차량 준비 중…'}
-              <ArrowUpRight size={22} />
-            </button>
-            <div className="enter-hint">
-              {hud.error ||
-                '← → 버튼을 누른 채 조향 · 액셀과 브레이크로 속도 조절'}
-            </div>
-            <button
-              className="touge-start"
-              onClick={() => {
-                select('namsan');
-                settings({
-                  daylight: false,
-                  peaceful: false,
-                  cruise: false,
-                  transmission: 'auto',
-                });
-                start();
-              }}
-            >
-              남산 야간 타임어택
-            </button>
-          </section>
-          {showroom && (
-            <div className="showroom-bar">
-              <strong>
-                {vehicle.brand} {vehicle.name}
-              </strong>
-              <button onClick={() => setShowroom(false)}>
-                차고로 돌아가기
-              </button>
-              <div className="paint-options">
-                {PAINTS.map(([color, label]) => (
+            <div className="trip-bottom">
+              <div className="destination-rail" aria-label="추천 명소 슬라이드">
+                {(course.config.featured
+                  ? ROUTES.filter((r) => r.featured)
+                  : [course.config, ...ROUTES.filter((r) => r.featured)]
+                ).map((r) => (
                   <button
-                    key={color}
-                    aria-label={label}
-                    style={{ background: color }}
-                    onClick={() => settings({ color })}
-                  />
+                    key={r.id}
+                    className="destination-card"
+                    aria-pressed={hud.route === r.id}
+                    onClick={() => select(r.id)}
+                  >
+                    <RouteMap id={r.id} small />
+                    <div>
+                      <strong>{r.name}</strong>
+                      <small>
+                        {(getCourse(r.id).length / 1000).toFixed(1)} km ·{' '}
+                        {r.district || '서울'}
+                      </small>
+                    </div>
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
-          <section
-            className={`route-picker ${showroom ? 'showroom-hidden' : ''}`}
-            aria-label="맵 선택"
-          >
-            <div className="picker-heading">
-              <span>한국 드라이빙 명소</span>
-              <span>추천 10곳</span>
-            </div>
-            <div className="catalog-tabs">
               <button
-                aria-pressed={featuredOnly}
-                onClick={() => {
-                  setFeaturedOnly(true);
-                  setCatalogPage(0);
-                }}
+                className="depart-button"
+                disabled={!hud.loaded || !!hud.error}
+                onClick={start}
               >
-                명소 10곳
-              </button>
-              <button
-                aria-pressed={!featuredOnly}
-                onClick={() => {
-                  setFeaturedOnly(false);
-                  setCatalogPage(0);
-                }}
-              >
-                전체 {ROUTES.length} 코스
+                <span>{course.config.name}</span>드라이브 시작{' '}
+                <ArrowUpRight size={23} />
               </button>
             </div>
-            <label className="traffic-choice">
-              도로 상황
-              <select
-                aria-label="도로 상황"
-                value={profile.settings.traffic}
-                onChange={(e) =>
-                  settings({
-                    traffic: e.target.value as Profile['settings']['traffic'],
-                  })
-                }
-              >
-                <option value="route">코스별 추천 상황</option>
-                <option value="free">일상 교통</option>
-                <option value="works">도로 공사</option>
-                <option value="busy">퇴근길 정체</option>
-              </select>
-            </label>
-            <input
-              className="route-search"
-              aria-label="코스 검색"
-              placeholder="인천 · 동해 · 부산 · 숲길 검색"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setCatalogPage(0);
-              }}
-            />
-            <div className="scenic-filters">
-              {['전체', '해안', '인천', '동해', '숲'].map((label) => (
-                <button
-                  key={label}
-                  aria-pressed={query === (label === '전체' ? '' : label)}
-                  onClick={() => {
-                    setQuery(label === '전체' ? '' : label);
-                    setCatalogPage(0);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="catalog-list">
-              {filtered
-                .slice(catalogPage * 6, catalogPage * 6 + 6)
-                .map((route) => {
-                  const r = profile.records[route.id];
-                  return (
-                    <button
-                      className={`route-card ${hud.route === route.id ? 'selected' : ''}`}
-                      key={route.id}
-                      aria-pressed={hud.route === route.id}
-                      onClick={() => select(route.id)}
-                      style={
-                        { '--route-color': route.color } as React.CSSProperties
-                      }
-                    >
-                      <RouteMap id={route.id} small />
-                      <div>
-                        <small>{route.subtitle}</small>
-                        <h2>{route.name}</h2>
-                        <p>
-                          {route.difficulty} ·{' '}
-                          {
-                            (
-                              {
-                                free: '일상 교통',
-                                works: '도로 공사',
-                                busy: '정체 구간',
-                              } as const
-                            )[
-                              profile.settings.traffic === 'route'
-                                ? route.trafficPreset || 'free'
-                                : profile.settings.traffic
-                            ]
-                          }
-                        </p>
-                        <span>
-                          {(getCourse(route.id).length / 1000).toFixed(1)} km{' '}
-                          <b>
-                            코스 평점 {'★'.repeat(r?.stars || 0)}
-                            {'☆'.repeat(3 - (r?.stars || 0))}
-                          </b>
-                        </span>
-                        {r?.bestTime && <em>BEST {time(r.bestTime)}</em>}
-                      </div>
-                    </button>
-                  );
-                })}
-            </div>
-            <div className="catalog-pages">
-              <button
-                disabled={catalogPage === 0}
-                onClick={() => setCatalogPage((p) => p - 1)}
-              >
-                이전
-              </button>
-              <span>
-                {filtered.length ? catalogPage + 1 : 0} /{' '}
-                {Math.ceil(filtered.length / 6)} · {filtered.length}개
-              </span>
-              <button
-                disabled={(catalogPage + 1) * 6 >= filtered.length}
-                onClick={() => setCatalogPage((p) => p + 1)}
-              >
-                다음
-              </button>
-            </div>
-            {!filtered.length && (
-              <p>검색 결과가 없습니다. 다른 지역을 입력해 주세요.</p>
-            )}
-            <p className="route-note">
-              국내 드라이빙 명소를 재해석한 {ROUTES.length}개 가상 코스입니다.
-              <br />
-              실제 도로와 경로는 다릅니다.
-            </p>
           </section>
-          <div className="selected-route-caption">
-            <MapPin size={15} />
-            {course.config.landmarks.map((l) => l.name).join(' → ')}
-          </div>
           <a
-            className="model-credit"
-            href="https://threejs.org/examples/webgl_materials_car.html"
+            className="showroom-credit"
+            href={`${import.meta.env.BASE_URL}models/ATTRIBUTION.md`}
             target="_blank"
             rel="noreferrer"
           >
-            Ferrari 모델 출처 · 다른 차량은 브랜드에서 영감을 받은 게임용 디자인
-            ↗
+            3D 모델 · 제작자 및 라이선스
           </a>
-        </>
+        </div>
       )}
       <dialog
         ref={dialog}

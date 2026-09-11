@@ -1,0 +1,92 @@
+[
+  {
+    "id": "audi",
+    "file": "audi.glb",
+    "bytes": 968804,
+    "sha256": "bfb918e58e783df451de923396a36e40eacb71d2a889ca269c086c9f92e69165",
+    "author": "supercarmodels (https://sketchfab.com/supercarmodels)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/2021-audi-r8-v10-performance-quattro-8dd1c237238244d1a2a49d764d321b87",
+    "title": "2021 Audi R8 V10 Performance Quattro"
+  },
+  {
+    "id": "bmw",
+    "file": "bmw.glb",
+    "bytes": 775008,
+    "sha256": "ea66170db4abc0737f39c6f1a99d11708b3a1c522a1fddb969e5b7dcc6a2f1b1",
+    "author": "𝙎𝙍𝙏 𝙋𝙚𝙧𝙛𝙤𝙢𝙖𝙣𝙘𝙚™ (https://sketchfab.com/TheRealSRT)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/bmw-m4-competition-m-package-5c0a2dafb1ad408d9fc9eeef9aee531b",
+    "title": "BMW M4 Competition M Package"
+  },
+  {
+    "id": "hyundai",
+    "file": "hyundai.glb",
+    "bytes": 510584,
+    "sha256": "7bdc7201670f783dc2f24b364d169df6ce6d8c330f844657433c830f37d9a4c7",
+    "author": "leman23rus (https://sketchfab.com/lema23rus)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/hyundai-f82afacba6194677b219d708091f374b",
+    "title": "Hyundai"
+  },
+  {
+    "id": "kia",
+    "file": "kia.glb",
+    "bytes": 403356,
+    "sha256": "4bf0a08bb5810fb3202299cc517407c96a086a4873e811397e98073ff93c5f70",
+    "author": "OneSteven (https://sketchfab.com/Steven007)",
+    "license": "CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)",
+    "source": "https://sketchfab.com/3d-models/2017-kia-sportage-73fe06150f17452c84cd62961c4568a1",
+    "title": "2017 KIA Sportage"
+  },
+  {
+    "id": "lincoln",
+    "file": "lincoln.glb",
+    "bytes": 1966516,
+    "sha256": "b23923f4209534b340c1e3fae1cede498671c0e432a318f93462d7391a708284",
+    "author": "Barbo (https://sketchfab.com/barbo-autos)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/lincoln-continental-mark-v-09587fee473d4b07ac7f10d2a65b47c4",
+    "title": "Lincoln Continental Mark V"
+  },
+  {
+    "id": "mercedes",
+    "file": "mercedes.glb",
+    "bytes": 3666676,
+    "sha256": "88b44d360e99bc8cd62492eeadb37a2ee70a4e040a1f72f0b97e45f9311294e6",
+    "author": "Mpgs Studios (https://sketchfab.com/mpgs.studio)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/mercedes-benz-maybach-2022-979f37a878f04b2a8d888b62ea6027e9",
+    "title": "Mercedes-Benz Maybach 2022"
+  },
+  {
+    "id": "porsche",
+    "file": "porsche.glb",
+    "bytes": 1715980,
+    "sha256": "34aec78661db00c5c565a192f4390166857c6966f83fe8f2762f6cf6ef1703a3",
+    "author": "Karol Miklas (https://sketchfab.com/karolmiklas)",
+    "license": "CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)",
+    "source": "https://sketchfab.com/3d-models/free-porsche-911-carrera-4s-d01b254483794de3819786d93e0e1ebf",
+    "title": "(FREE) Porsche 911 Carrera 4S"
+  },
+  {
+    "id": "tesla",
+    "file": "tesla.glb",
+    "bytes": 183916,
+    "sha256": "c2ae8b3e103b5f486843a11daed8dd18e53e5d57405032dc9be7f2289d49a572",
+    "author": "OneSteven (https://sketchfab.com/Steven007)",
+    "license": "CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)",
+    "source": "https://sketchfab.com/3d-models/tesla-model-s-1360e3cf7323487eaba8ce94279229b6",
+    "title": "Tesla Model S"
+  },
+  {
+    "id": "toyota",
+    "file": "toyota.glb",
+    "bytes": 3742692,
+    "sha256": "5ff61e51906979408804db0dcf71514d49772d7c7ffd82b2c9f39d857070a02a",
+    "author": "Martin Trafas (https://sketchfab.com/Bexxie)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/toyota-ae86-black-limited-kouki-80854ba302034431b517f523db328129",
+    "title": "Toyota AE86 Black Limited Kouki"
+  }
+]

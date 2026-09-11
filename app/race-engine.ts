@@ -1,4 +1,5 @@
 import { getVehicle } from './vehicles';
+import { prepareShowroomModel } from './showroom-model';
 import { buildVehicle, TRAFFIC_BODIES } from './vehicle-model';
 import type { TrafficScenario } from './traffic';
 import { createHazards, sweptHazardHit, type Hazard } from './challenge';
@@ -159,31 +160,73 @@ export class RaceEngine {
     this.resetTraffic();
     this.configureExperience(this.daylight, this.peaceful, this.cruise);
   };
+  showroomYaw = 2.45;
+  showroomPitch = 0.23;
+  private studio = new T.Group();
+  private modelLoads = new Map<string, Promise<void>>();
+  private studioWasReady = false;
+  orbitShowroom = (dx: number, dy: number) => {
+    this.showroomYaw -= dx * 0.009;
+    this.showroomPitch = T.MathUtils.clamp(
+      this.showroomPitch + dy * 0.004,
+      0.08,
+      0.65,
+    );
+  };
   selectVehicle = (id: string) => {
     if (this.state.mode === 'racing') return;
     this.vehicleId = getVehicle(id).id;
-    if (
-      this.vehicleId !== 'ferrari' &&
-      !this.vehicleModels.has(this.vehicleId)
-    ) {
-      const mesh = buildVehicle(this.vehicle, this.paint);
-      this.vehicleModels.set(this.vehicleId, mesh);
-      this.player.add(mesh);
-    }
+    this.state.error = '';
     if (this.model) this.model.visible = this.vehicleId === 'ferrari';
     this.vehicleModels.forEach(
-      (model, key) => (model.visible = key === this.vehicleId),
+      (m, key) => (m.visible = key === this.vehicleId),
     );
-    this.wheels =
-      this.vehicleId === 'ferrari'
-        ? this.ferrariWheels
-        : this.vehicleModels.get(this.vehicleId)?.userData.wheels || [];
     this.drive = newDrive();
     if (this.vehicle.spec.powertrain === 'electric') this.drive.rpm = 0;
     this.state.rpm = this.drive.rpm;
     this.state.gear = 1;
     this.state.transmission = 'auto';
+    const selected = this.vehicleId;
+    this.state.loaded =
+      selected === 'ferrari' ? !!this.model : this.vehicleModels.has(selected);
+    this.wheels = selected === 'ferrari' ? this.ferrariWheels : [];
     this.update({ ...this.state });
+    if (selected === 'ferrari' && !this.state.loaded) this.loadCar();
+    if (
+      selected !== 'ferrari' &&
+      !this.state.loaded &&
+      !this.modelLoads.has(selected)
+    ) {
+      const task = new GLTFLoader()
+        .setDRACOLoader(this.draco)
+        .loadAsync(import.meta.env.BASE_URL + `models/showroom/${selected}.glb`)
+        .then((gltf) => {
+          if (this.disposed) {
+            this.disposeObject(gltf.scene);
+            return;
+          }
+          const group = prepareShowroomModel(gltf.scene, getVehicle(selected));
+          this.vehicleModels.set(selected, group);
+          this.player.add(group);
+          group.visible = this.vehicleId === selected;
+          this.setColor('#' + this.paint.color.getHexString());
+          if (this.vehicleId === selected) {
+            this.state.loaded = true;
+            this.state.error = '';
+            this.update({ ...this.state });
+          }
+        })
+        .catch(() => {
+          if (!this.disposed && this.vehicleId === selected) {
+            this.state.loaded = false;
+            this.state.error =
+              '모델을 불러오지 못했습니다. 다시 시도해 주세요.';
+            this.update({ ...this.state });
+          }
+        })
+        .finally(() => this.modelLoads.delete(selected));
+      this.modelLoads.set(selected, task);
+    }
   };
   private lateralVelocity = 0;
   private hazards: Hazard[] = [];
@@ -316,6 +359,30 @@ export class RaceEngine {
     pink.position.set(35, 15, 20);
     this.scene.add(pink);
     this.scene.add(this.player);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = T.PCFSoftShadowMap;
+    const floor = new T.Mesh(
+      new T.CircleGeometry(120, 96),
+      new T.MeshStandardMaterial({
+        color: '#d6dfe6',
+        roughness: 0.55,
+        metalness: 0.08,
+      }),
+    );
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -0.035;
+    floor.receiveShadow = true;
+    this.studio.add(floor);
+    const key = new T.SpotLight('#ffffff', 22, 35, Math.PI / 3, 0.6, 1);
+    key.position.set(-4, 8, -3);
+    key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024);
+    key.shadow.bias = -0.00015;
+    this.studio.add(key, key.target);
+    const fill = new T.DirectionalLight('#dae9ff', 1.4);
+    fill.position.set(5, 4, 4);
+    this.studio.add(fill);
+    this.scene.add(this.studio);
     this.world = new TrackWorld(this.course, this.scenario);
     this.scene.add(this.world.root);
     this.scene.add(this.hazardRoot);
@@ -392,7 +459,10 @@ export class RaceEngine {
     parent.add(m);
     return m;
   }
+  private ferrariLoading = false;
   private loadCar() {
+    if (this.ferrariLoading || this.model) return;
+    this.ferrariLoading = true;
     new GLTFLoader().setDRACOLoader(this.draco).load(
       import.meta.env.BASE_URL + 'models/ferrari.glb',
       (gltf) => {
@@ -400,10 +470,12 @@ export class RaceEngine {
           this.disposeObject(gltf.scene);
           return;
         }
+        this.ferrariLoading = false;
         const model = gltf.scene;
         model.traverse((o) => {
           if (o instanceof T.Mesh) {
             o.frustumCulled = true;
+            o.castShadow = true;
             const n = o.name;
             if (n === 'body') o.material = this.paint;
             else if (n === 'glass')
@@ -487,12 +559,15 @@ export class RaceEngine {
         under.position.set(0, 0.4, 2);
         this.player.add(under);
         this.buildTraffic();
-        this.state.loaded = true;
+        this.state.loaded =
+          this.vehicleId === 'ferrari' ||
+          this.vehicleModels.has(this.vehicleId);
         this.update({ ...this.state });
       },
       undefined,
       () => {
-        if (!this.disposed) {
+        this.ferrariLoading = false;
+        if (!this.disposed && this.vehicleId === 'ferrari') {
           this.state.error =
             '차량을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.';
           this.update({ ...this.state });
@@ -748,7 +823,19 @@ export class RaceEngine {
     this.steeringInput = 0;
     this.update({ ...this.state });
   };
-  setColor = (color: string) => this.paint.color.set(color);
+  setColor = (color: string) => {
+    this.paint.color.set(color);
+    this.vehicleModels.forEach((model) =>
+      model.traverse((o) => {
+        if (o instanceof T.Mesh) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats)
+            if (m.userData.coachwork && m instanceof T.MeshStandardMaterial)
+              m.color.set(color);
+        }
+      }),
+    );
+  };
   setCamera = (camera: number) => {
     this.state.camera = camera === 1 ? 1 : 0;
     this.snapCamera();
@@ -1071,9 +1158,31 @@ export class RaceEngine {
     for (let left = dt; left > 0; left -= 0.025)
       this.simulate(Math.min(left, 0.025));
     const s = this.state;
+    const ready = s.mode === 'ready';
+    this.studio.visible = ready;
+    this.world.root.visible = !ready;
+    this.hazardRoot.visible = !ready && !this.peaceful;
+    if (ready) {
+      this.scene.background = new T.Color('#d6dfe6');
+      if (this.scene.fog instanceof T.FogExp2) {
+        this.scene.fog.color.set('#d6dfe6');
+        this.scene.fog.density = 0.009;
+      }
+      this.scene.environmentIntensity = 0.8;
+    } else if (this.studioWasReady)
+      this.configureExperience(this.daylight, this.peaceful, this.cruise);
+    this.studioWasReady = ready;
     this.hit = Math.max(0, this.hit - dt);
     if (s.mode !== 'racing') s.boost = false;
-    const f = this.course.sample(s.distance, this.x);
+    const f = ready
+      ? {
+          position: new T.Vector3(),
+          tangent: new T.Vector3(0, 0, -1),
+          right: new T.Vector3(1, 0, 0),
+          pitch: 0,
+          heading: 0,
+        }
+      : this.course.sample(s.distance, this.x);
     this.player.position.copy(f.position);
     this.player.position.y += 0.025;
     this.player.rotation.set(
@@ -1109,7 +1218,8 @@ export class RaceEngine {
       for (const w of (c.mesh.userData.wheels || []) as T.Object3D[])
         if (s.mode === 'racing')
           w.rotation.x -= ((c.actualSpeed ?? c.speed) * dt) / 0.4;
-      c.mesh.visible = c.z - s.distance < 700 && c.z - s.distance > -125;
+      c.mesh.visible =
+        !ready && c.z - s.distance < 700 && c.z - s.distance > -125;
     });
     this.wheels.forEach((w) => {
       if (s.mode === 'racing') w.rotation.x -= ((s.velocity / 3.6) * dt) / 0.34;
@@ -1119,8 +1229,7 @@ export class RaceEngine {
       flame.scale.y = 1 + Math.sin(t * 0.08) * 0.25;
     });
     this.world.animate(t);
-    const ready = s.mode === 'ready',
-      hood = s.camera === 1 && !ready,
+    const hood = s.camera === 1 && !ready,
       narrow = this.camera.aspect < 0.8;
     this.player.visible = !hood;
     const desired = f.position
@@ -1139,18 +1248,26 @@ export class RaceEngine {
       );
     desired.addScaledVector(f.right, ready ? 6 : 0);
     desired.y += ready ? 2.3 : hood ? 1.35 : 4.6;
-    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 6));
+    if (ready) {
+      const radius = this.vehicle.length * (narrow ? 2.3 : 1.55);
+      desired.set(
+        Math.sin(this.showroomYaw) * radius,
+        1.1 + radius * Math.sin(this.showroomPitch),
+        Math.cos(this.showroomYaw) * radius,
+      );
+    }
+    this.camera.position.lerp(desired, 1 - Math.exp(-dt * 9));
     const target = ready
       ? f.position.clone()
       : this.course.sample(
           s.distance + (s.selector === 'R' ? -25 : 25),
           this.x * 0.9,
         ).position;
-    target.y += ready ? (narrow ? 1.5 : 0.6) : 1;
+    target.y += ready ? this.vehicle.height * 0.55 : 1;
     this.camera.lookAt(target);
     this.camera.fov = T.MathUtils.damp(
       this.camera.fov,
-      ready ? 46 : hood ? 72 : 54 + s.speed * 0.025 + (s.boost ? 5 : 0),
+      ready ? 42 : hood ? 72 : 54 + s.speed * 0.025 + (s.boost ? 5 : 0),
       4,
       dt,
     );
@@ -1185,11 +1302,14 @@ export class RaceEngine {
       s.drift,
       this.vehicle.spec.powertrain === 'electric',
     );
+    this.composer.passes[1].enabled = !ready;
     this.composer.render();
     if (t - this.ui > 85) {
       this.ui = t;
       Object.assign(this.canvas.dataset, {
         mode: s.mode,
+        vehicle: this.vehicleId,
+        orbit: String(this.showroomYaw.toFixed(2)),
         speed: String(Math.round(s.speed)),
         loaded: String(s.loaded),
         camera: String(s.camera),

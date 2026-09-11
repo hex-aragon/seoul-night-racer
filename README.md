@@ -1,8 +1,8 @@
-# Seoul / Midnight Run — Chapter 09
+# Seoul / Midnight Run — Chapter 10
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
-Three.js browser arcade racing with a detailed Ferrari 458 Italia, original city-pop BGM and procedural Seoul-inspired courses. Courses reinterpret landmarks for a game; they are not reproductions of real roads.
+Three.js browser arcade racing with ten detailed attributed vehicle assets, original city-pop BGM and procedural Seoul-inspired courses. Courses reinterpret landmarks for a game; they are not reproductions of real roads.
 
 ## Courses
 
@@ -10,7 +10,7 @@ Three.js browser arcade racing with a detailed Ferrari 458 Italia, original city
 - **남산 와인딩**: continuous S bends, hills, trees, N Seoul Tower.
 - **서울 랜드마크 투어**: city bends, Gwanghwamun, Cheonggyecheon, Lotte World Tower.
 
-All 133 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and ten scenic destinations. Search by district, terrain or difficulty and browse six cards per page. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
+All 133 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and ten scenic destinations. Slide the ten featured destinations along the bottom of the showroom, or select any route in the full-course dropdown. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
 
 ## Controls
 
@@ -40,7 +40,7 @@ Finished and crashed runs award earned XP once. Abandoning a run through the pau
 
 Engine audio blends two real-recording-derived loops by qubodup (CC BY 3.0) and domasx2 (CC0), with RPM-dependent playback, throttle response and gear-change pitch drops. Filtered tire noise accompanies drifting. It is not an actual Ferrari recording; source links, attribution and processing details are in `public/AUDIO-CREDITS.md`. Audio starts after a user gesture and fades during pause/game-over.
 
-Ferrari 458 Italia model credits: `public/models/ATTRIBUTION.md`. Higgsfield assets remain unintegrated because the plugin connection has not completed.
+All ten vehicle model credits: `public/models/ATTRIBUTION.md`. Higgsfield assets remain unintegrated because the plugin connection has not completed.
 
 ## Development and validation
 
@@ -60,7 +60,7 @@ Tests cover course continuity, curve forces, collision and finish outcomes, once
 
 ## Extension points
 
-`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions and free steering through parking lots remain future work; P currently locks the vehicle, not a parking minigame. The selectable Tesla-inspired car uses a single-speed electric powertrain, battery gauge, stronger coasting deceleration, a small regenerative charge return and synthesized electric motor sound. It does not expose manual gear paddles.
+`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions and free steering through parking lots remain future work; P currently locks the vehicle, not a parking minigame. The selectable Tesla Model S uses a single-speed electric powertrain, battery gauge, stronger coasting deceleration, a small regenerative charge return and synthesized electric motor sound. It does not expose manual gear paddles.
 
 ## Driver-focused interface
 
@@ -82,7 +82,9 @@ Steering uses a responsive input curve, speed-sensitive gain, a bounded response
 
 ## Vehicle garage and road conditions
 
-Ten brands are selectable before driving: Ferrari, Porsche, Mercedes-Benz, Audi, BMW, Hyundai, Kia, Tesla, Toyota and Lincoln. Ferrari retains the attributed 458 Italia asset; the other nine are original stylized game bodies inspired by brand design cues, not licensed or exact production-car reproductions. Body dimensions, silhouette, lamps, grille and acceleration/top-speed tuning differ. All specifications are arcade tuning, not manufacturer claims. A full 3D preview, ten paint presets and a custom color picker are available. Selected vehicle, paint and road condition persist locally.
+One large 3D car is shown at a time. Switch brands using the top rail or previous/next arrows, drag the car to orbit through 360 degrees, choose a paint color, select a destination from the horizontal bottom rail, and start driving. Keyboard users can rotate the focused preview with arrow keys. Settings hold road conditions and audio controls.
+
+Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, a customized Hyundai coupe, Kia Sportage, Tesla Model S, Toyota AE86 and Lincoln Continental Mark V use attributed detailed models. The nine replacement GLBs total about 14 MB and load on demand. Each model keeps its original license; Porsche is CC BY-SA and Kia/Tesla are CC BY-NC. This free game is noncommercial. See `public/models/ATTRIBUTION.md` and `public/models/showroom/manifest.json`. Geometry, material, interior and wheel detail vary with the source asset. All driving specifications are arcade tuning, not manufacturer claims. Vehicle, paint and road condition persist locally.
 
 Each route offers everyday traffic, roadworks or rush-hour congestion, with a recommended condition attached to featured destinations. Roadworks close the right lane with cones, warning boards, parked dump trucks, workers and excavators. Traffic signals and merges left or waits for a gap before the closure. Congestion creates a slow queue that stops and starts; extra time is added to timed challenges. Player controls and collision behavior remain active in both situations.
 
