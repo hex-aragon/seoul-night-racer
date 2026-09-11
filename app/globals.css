@@ -3000,3 +3000,116 @@ input:focus-visible {
 .signal-pill{position:absolute;top:78px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:9px;padding:9px 15px;background:#10212ce8;border:1px solid #ffffff26;border-radius:24px;color:#fff;font-size:13px;box-shadow:0 4px 16px #0003;pointer-events:none}.signal-pill i{width:10px;height:10px;border-radius:50%;background:#39e19a;box-shadow:0 0 10px currentColor}.signal-pill.red i{background:#ff565c}.signal-pill.amber i{background:#ffca55}.signal-pill span{font-size:11px;color:#d8e1e6}@media(max-width:700px){.signal-pill{top:70px;font-size:11px;padding:7px 12px}}
 
 @media(max-width:700px){.game-shell:has(.race-ribbon) .signal-pill{top:115px}}
+
+.driving-assessment {
+  position: absolute;
+  top: 80px;
+  left: 25px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: #152b34e8;
+  color: #eaf4ed;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 10px;
+}
+.driving-assessment strong {
+  font-size: 24px;
+  color: #b9ecc8;
+}
+.driving-assessment strong small {
+  font-size: 10px;
+  font-weight: 400;
+}
+.driving-assessment > b {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 4px solid #d64e4e;
+  border-radius: 50%;
+  background: #fff;
+  color: #1b252e;
+  font-size: 15px;
+  margin-left: 8px;
+}
+.driving-assessment > b.overspeed {
+  background: #ffd3c7;
+}
+.driving-assessment.at-risk strong {
+  color: #ff947c;
+}
+.turn-indicators {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+}
+.turn-indicators button {
+  flex: 1;
+  background: #1e3947;
+  color: #d6e2e5;
+  border: 1px solid #6c869280;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 16px;
+}
+.turn-indicators span {
+  font-size: 10px;
+}
+.turn-indicators button[aria-pressed='true'] {
+  color: #ffc76e;
+  background: #59462b;
+  animation: indicatorPulse 0.8s steps(2, end) infinite;
+}
+.result-driving-score {
+  margin: 12px 0;
+  font-size: 15px;
+  color: #b6e6c6;
+}
+.result-driving-score b {
+  font-size: 46px;
+}
+.result-driving-score.at-risk {
+  color: #ff977d;
+}
+.deduction-summary {
+  font-size: 12px !important;
+}
+@keyframes indicatorPulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (max-width: 700px) {
+  .driving-assessment {
+    top: 112px;
+    left: 12px;
+    padding: 5px 8px;
+    gap: 5px;
+  }
+  .driving-assessment strong {
+    font-size: 19px;
+  }
+  .driving-assessment > b {
+    width: 29px;
+    height: 29px;
+    font-size: 12px;
+  }
+  .game-shell:has(.driving-assessment) .signal-pill {
+    top: 168px;
+  }
+  .turn-indicators {
+    gap: 5px;
+  }
+  .turn-indicators button {
+    padding: 5px 2px;
+  }
+  .turn-indicators span {
+    font-size: 8px;
+  }
+  .driver-dash {
+    padding-top: 10px;
+  }
+}

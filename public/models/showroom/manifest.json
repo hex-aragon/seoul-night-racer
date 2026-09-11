@@ -32,12 +32,12 @@
   {
     "id": "kia",
     "file": "kia.glb",
-    "bytes": 403356,
-    "sha256": "4bf0a08bb5810fb3202299cc517407c96a086a4873e811397e98073ff93c5f70",
-    "author": "OneSteven (https://sketchfab.com/Steven007)",
-    "license": "CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)",
-    "source": "https://sketchfab.com/3d-models/2017-kia-sportage-73fe06150f17452c84cd62961c4568a1",
-    "title": "2017 KIA Sportage"
+    "bytes": 5944732,
+    "sha256": "c04ecec392edadfd6d89dfc7f472e90b9e70cd8630d0815b0bbc31676f96f355",
+    "author": "Car2022 (https://sketchfab.com/Car2022)",
+    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+    "source": "https://sketchfab.com/3d-models/kia-stinger-b1493e68069f4b869743de7a4220a4f4",
+    "title": "Kia Stinger"
   },
   {
     "id": "lincoln",
@@ -78,15 +78,5 @@
     "license": "CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)",
     "source": "https://sketchfab.com/3d-models/tesla-model-s-1360e3cf7323487eaba8ce94279229b6",
     "title": "Tesla Model S"
-  },
-  {
-    "id": "toyota",
-    "file": "toyota.glb",
-    "bytes": 3742692,
-    "sha256": "5ff61e51906979408804db0dcf71514d49772d7c7ffd82b2c9f39d857070a02a",
-    "author": "Martin Trafas (https://sketchfab.com/Bexxie)",
-    "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
-    "source": "https://sketchfab.com/3d-models/toyota-ae86-black-limited-kouki-80854ba302034431b517f523db328129",
-    "title": "Toyota AE86 Black Limited Kouki"
   }
 ]

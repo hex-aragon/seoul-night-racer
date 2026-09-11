@@ -12,7 +12,7 @@ Draco decoder: Apache License 2.0, https://github.com/google/draco/blob/main/LIC
 
 ## Detailed showroom vehicles
 
-These adapted assets retain their individual licenses. Porsche adaptations remain CC BY-SA 4.0. Kia and Tesla are CC BY-NC 4.0 and are used in this free, noncommercial game. See each linked license before reusing assets.
+These adapted assets retain their individual licenses. Porsche adaptations remain CC BY-SA 4.0. Tesla is CC BY-NC 4.0 and are used in this free, noncommercial game. See each linked license before reusing assets.
 
 ### 2021 Audi R8 V10 Performance Quattro
 
@@ -35,12 +35,14 @@ These adapted assets retain their individual licenses. Porsche adaptations remai
 - License: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
 - Original: https://sketchfab.com/3d-models/hyundai-f82afacba6194677b219d708091f374b
 
-### 2017 KIA Sportage
+### Kia Stinger
 
 - File: `showroom/kia.glb`
-- Creator: OneSteven (https://sketchfab.com/Steven007)
-- License: CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
-- Original: https://sketchfab.com/3d-models/2017-kia-sportage-73fe06150f17452c84cd62961c4568a1
+- Creator: Car2022 (https://sketchfab.com/Car2022)
+- License: CC-BY-4.0 (https://creativecommons.org/licenses/by/4.0/)
+- Original: https://sketchfab.com/3d-models/kia-stinger-b1493e68069f4b869743de7a4220a4f4
+- Download mirror: https://fetchcfd.com/view-project/4832-kia-stinger-3d-model
+- Adaptation: Draco compression, 512px WebP textures, mesh simplification (0.35 ratio, 0.002 error), adjustable body paint.
 
 ### Lincoln Continental Mark V
 
@@ -70,14 +72,7 @@ These adapted assets retain their individual licenses. Porsche adaptations remai
 - License: CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/)
 - Original: https://sketchfab.com/3d-models/tesla-model-s-1360e3cf7323487eaba8ce94279229b6
 
-### Toyota AE86 Black Limited Kouki
-
-- File: `showroom/toyota.glb`
-- Creator: Martin Trafas (https://sketchfab.com/Bexxie)
-- License: CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
-- Original: https://sketchfab.com/3d-models/toyota-ae86-black-limited-kouki-80854ba302034431b517f523db328129
-
-Changes: glTF Transform optimization, Draco geometry compression, WebP textures up to 1024px, mesh simplification (0.65 ratio, 0.0005 error), scale/orientation normalization, showroom lighting and customizable paint materials. Porsche ground plane, Toyota shadow plane, and the duplicate Lincoln display car removed at runtime. Embedded original credits are preserved. File integrity hashes are in `showroom/manifest.json`. BMW source already excluded hidden interior meshes and reduced textures.
+Changes: glTF Transform optimization, Draco geometry compression, WebP textures up to 1024px, mesh simplification (0.65 ratio, 0.0005 error), scale/orientation normalization, showroom lighting and customizable paint materials. Porsche ground plane and the duplicate Lincoln display car removed at runtime. Embedded original credits are preserved. File integrity hashes are in `showroom/manifest.json`. BMW source already excluded hidden interior meshes and reduced textures.
 
 Traffic bodies remain original procedural geometry. Vehicle names and marks identify depicted cars; this project is not affiliated with or endorsed by manufacturers. Performance figures are fictional game tuning.
 

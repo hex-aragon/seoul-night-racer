@@ -32,7 +32,7 @@ In racing mode, a vehicle, guardrail or roadblock collision ends the run. Cones 
 
 XP, levels, best times, route stars, discovered landmarks, achievements, paint, transmission and audio settings are stored in `localStorage` under `seoul-midnight-run.profile.v1`. No account or server is needed. Storage is specific to this browser and origin; clearing site data removes it. If storage is unavailable, a visible warning explains that only the current session is retained.
 
-Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Three-star target times are displayed in each race; slower finishes award one or two stars. A slower or crashed run never replaces a better record.
+Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Driving grades of 98/90/80 award three/two/one stars on completion. A slower or crashed run never replaces a better record.
 
 ## Audio and models
 
@@ -40,7 +40,7 @@ Finished and crashed runs award earned XP once. Abandoning a run through the pau
 
 Engine audio blends two real-recording-derived loops by qubodup (CC BY 3.0) and domasx2 (CC0), with RPM-dependent playback, throttle response and gear-change pitch drops. Filtered tire noise accompanies drifting. It is not an actual Ferrari recording; source links, attribution and processing details are in `public/AUDIO-CREDITS.md`. Audio starts after a user gesture and fades during pause/game-over.
 
-All ten vehicle model credits: `public/models/ATTRIBUTION.md`. Higgsfield assets remain unintegrated because the plugin connection has not completed.
+All nine vehicle model credits: `public/models/ATTRIBUTION.md`. Higgsfield assets remain unintegrated because the plugin connection has not completed.
 
 ## Development and validation
 
@@ -84,7 +84,7 @@ Steering uses a responsive input curve, speed-sensitive gain, a bounded response
 
 One large 3D car is shown at a time. Switch brands using the top rail or previous/next arrows, drag the car to orbit through 360 degrees, choose a paint color, select a destination from the horizontal bottom rail, and start driving. Keyboard users can rotate the focused preview with arrow keys. Settings hold road conditions and audio controls.
 
-Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, a customized Hyundai coupe, Kia Sportage, Tesla Model S, Toyota AE86 and Lincoln Continental Mark V use attributed detailed models. The nine replacement GLBs total about 14 MB and load on demand. Each model keeps its original license; Porsche is CC BY-SA and Kia/Tesla are CC BY-NC. This free game is noncommercial. See `public/models/ATTRIBUTION.md` and `public/models/showroom/manifest.json`. Geometry, material, interior and wheel detail vary with the source asset. All driving specifications are arcade tuning, not manufacturer claims. Vehicle, paint and road condition persist locally.
+Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, a customized Hyundai coupe, Kia Stinger, Tesla Model S and Lincoln Continental Mark V use attributed detailed models. The eight replacement GLBs load on demand; the detailed Stinger is about 5.9 MB. Each model keeps its original license; Porsche is CC BY-SA and Tesla is CC BY-NC. This free game is noncommercial. See `public/models/ATTRIBUTION.md` and `public/models/showroom/manifest.json`. Geometry, material, interior and wheel detail vary with the source asset. All driving specifications are arcade tuning, not manufacturer claims. Vehicle, paint and road condition persist locally.
 
 Each route offers everyday traffic, roadworks or rush-hour congestion, with a recommended condition attached to featured destinations. Roadworks close the right lane with cones, warning boards, parked dump trucks, workers and excavators. Traffic signals and merges left or waits for a gap before the closure. Congestion creates a slow queue that stops and starts; extra time is added to timed challenges. Player controls and collision behavior remain active in both situations.
 
@@ -97,3 +97,9 @@ The original Blender-made signal masts, sun visors, pedestrian signals, glass sh
 All 133 fictional routes have crossings, placed outside bridge decks, work zones, landmarks and the finish. White zebra stripes, stop lines, tactile pavers, bollards and gaps in guardrails mark the crossing. Vehicle signals run 18 seconds green, 3 amber, 11 red. Pedestrian lights have clearance intervals and never show walk alongside vehicle green. Cars, trucks and motorcycles brake before the line and accelerate on green. Vehicles already committed on amber clear the crossing. Player pedals remain under manual control; the compact signal indicator shows phase, distance and remaining seconds. The race countdown pauses while stopped within 22 m of a red/amber stop line; pause freezes the signal clock. Signal compliance is not a hard collision or automatic restart rule.
 
 Browser verification uses the development-only `?qa` crossing preview button; it is stripped from production. Rebuild the original kit with `/Applications/Blender.app/Contents/MacOS/Blender --background --python art/build_street.py` on macOS (or your Blender executable on other platforms).
+
+## Driving assessment
+
+Every drive starts in the distant chase camera with 100 driving points. Reaching the finish with at least 80 passes; lower scores fail and do not earn completion stars or a best time. Grades and attempt records persist locally. Z/X or the amber arrow buttons toggle left/right indicators; activate at least one second before crossing a lane boundary. They cancel after the lane change. Unsignalled lane changes cost 5 points, crossing a red stop line costs 15 once per crossing, and continuous speeding costs 2 points per 2 seconds (4 when more than 20 km/h over). A 3 km/h tolerance avoids rounding penalties. Game speed limits are shown on road signs and the HUD: 80 on waterfront routes, 50 on mountain/forest routes, 60 in cities, 40 in works. These are fictional game rules. Time budgets allow compliant driving and signal waits.
+
+Toyota is removed; previously saved Toyota selection falls back to Ferrari. Kia now uses the actual Stinger model. The Genesis slot retains the attributed Genesis Coupe Custom model; a G80 replacement and Lincoln MKZ replacement are pending authorized asset downloads. The Lincoln slot still accurately identifies its Continental Mark V model.

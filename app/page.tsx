@@ -361,6 +361,12 @@ export default function Home() {
       <details>
         <summary>시점 · 변속 · 조작 방법</summary>
         <p>
+          운전점수 100점 시작 · 결승에서 80점 이상 합격. 과속 2초마다
+          −2점(20km/h 초과 시 −4점), 적색 신호 위반 −15점, 깜빡이 없이 차선 변경
+          −5점. 변경 1초 전에 Z(좌) / X(우) 또는 깜빡이 버튼을 누르세요. 화면
+          제한속도는 게임 규칙입니다.
+        </p>
+        <p>
           {electric ? '배터리' : '연료'} {hud.fuel.toFixed(1)}% · 게임 주행량
           기준
         </p>
@@ -527,6 +533,22 @@ export default function Home() {
               <strong>{hud.warning || '체크포인트를 향해 달리세요'}</strong>
             </div>
           )}
+          <div
+            className={
+              'driving-assessment ' + (hud.drivingScore < 80 ? 'at-risk' : '')
+            }
+            aria-label="운전점수와 제한속도"
+          >
+            <strong>
+              {hud.drivingScore}
+              <small> / 100</small>
+            </strong>
+            <span>합격 80점</span>
+            <b className={hud.speed > hud.speedLimit + 3 ? 'overspeed' : ''}>
+              {hud.speedLimit}
+            </b>
+            <span>제한 km/h</span>
+          </div>
           <section className="driver-dash" aria-label="운전 조작부">
             <div className="driver-wheel">
               <div
@@ -617,6 +639,22 @@ export default function Home() {
                 >
                   <i style={{ width: `${hud.fuel}%` }} />
                 </div>
+              </div>
+              <div className="turn-indicators" aria-label="방향지시등">
+                <button
+                  aria-label="좌측 깜빡이 Z"
+                  aria-pressed={hud.indicator === -1}
+                  onClick={() => engine.current?.toggleIndicator(-1)}
+                >
+                  ◀ <span>깜빡이 Z</span>
+                </button>
+                <button
+                  aria-label="우측 깜빡이 X"
+                  aria-pressed={hud.indicator === 1}
+                  onClick={() => engine.current?.toggleIndicator(1)}
+                >
+                  <span>깜빡이 X</span> ▶
+                </button>
               </div>
               <div className="drive-gear-row">
                 {(['P', 'R', 'N', 'D'] as const).map((g) => (
@@ -1027,24 +1065,43 @@ export default function Home() {
           <section className="result">
             <span className="eyebrow">
               {hud.endReason === 'finish'
-                ? 'CIRCUIT COMPLETE'
-                : 'CRASH / GAME OVER'}
+                ? 'DRIVING TEST · PASS'
+                : hud.endReason === 'low-score'
+                  ? 'DRIVING TEST · FAIL'
+                  : 'CRASH / GAME OVER'}
             </span>
             <h2>
               {hud.endReason === 'finish'
-                ? '코스를 공략했습니다.'
-                : hud.endReason === 'traffic'
-                  ? '차량과 충돌했습니다.'
-                  : hud.endReason === 'timeout'
-                    ? '제한 시간이 끝났습니다.'
-                    : hud.endReason === 'obstacle'
-                      ? '방호벽에 충돌했습니다.'
-                      : '가드레일과 충돌했습니다.'}
+                ? '운전 평가에 합격했습니다.'
+                : hud.endReason === 'low-score'
+                  ? '운전점수 미달 · 불합격'
+                  : hud.endReason === 'traffic'
+                    ? '차량과 충돌했습니다.'
+                    : hud.endReason === 'timeout'
+                      ? '제한 시간이 끝났습니다.'
+                      : hud.endReason === 'obstacle'
+                        ? '방호벽에 충돌했습니다.'
+                        : '가드레일과 충돌했습니다.'}
             </h2>
             <p>
               {hud.endReason === 'finish'
                 ? course.config.name
-                : '속도를 줄이고 다음 코너에 다시 도전하세요.'}
+                : hud.endReason === 'low-score'
+                  ? '결승에 도착했지만 80점 미만입니다. 교통규칙을 지켜 다시 도전하세요.'
+                  : '속도를 줄이고 다음 코너에 다시 도전하세요.'}
+            </p>
+            <div
+              className={
+                'result-driving-score ' +
+                (hud.drivingScore < 80 ? 'at-risk' : '')
+              }
+            >
+              <b>{hud.drivingScore}</b> / 100점 · 합격 기준 80점
+            </div>
+            <p className="deduction-summary">
+              과속 −{hud.violations.speeding} · 신호 위반{' '}
+              {hud.violations.redLights}회 · 깜빡이 미사용{' '}
+              {hud.violations.unsignalled}회
             </p>
             <div className="finish-stars">
               {'★'.repeat(reward?.stars || 0)}

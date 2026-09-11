@@ -1,3 +1,4 @@
+import { roadSpeedLimit } from './driving-score';
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Course } from './routes';
@@ -8,7 +9,10 @@ export class StreetScene {
   private disposed = false;
   private lamps: { crossing: Crossing; materials: T.MeshStandardMaterial[] }[] =
     [];
-  constructor(private course: Course) {
+  constructor(
+    private course: Course,
+    private works = false,
+  ) {
     this.crossings = createCrossings(course);
     this.root.name = 'Blender street kit';
     this.build();
@@ -47,6 +51,45 @@ export class StreetScene {
       color: '#ddb84a',
       roughness: 0.8,
     });
+    const markers = [
+      45,
+      ...this.crossings.map((c) => c.stop - 95),
+      ...(this.works
+        ? [this.course.length * 0.3 - 98, this.course.length * 0.49 + 2]
+        : []),
+    ];
+    for (const z of markers) {
+      const limit = roadSpeedLimit(this.course, z, this.works),
+        g = this.place(z, 12.5);
+      this.box(g, [0.07, 3.5, 0.07], [0, 1.75, 0], curb);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 256;
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fffdf4';
+      ctx.beginPath();
+      ctx.arc(128, 128, 121, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#d92d36';
+      ctx.lineWidth = 22;
+      ctx.stroke();
+      ctx.fillStyle = '#18252c';
+      ctx.font = 'bold 112px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(limit), 128, 137);
+      const tex = new T.CanvasTexture(canvas);
+      tex.colorSpace = T.SRGBColorSpace;
+      const face = new T.Mesh(
+        new T.PlaneGeometry(1.25, 1.25),
+        new T.MeshStandardMaterial({
+          map: tex,
+          transparent: true,
+          roughness: 0.65,
+        }),
+      );
+      face.position.set(0, 3, 0.07);
+      g.add(face);
+    }
     for (const c of this.crossings) {
       // Each stripe follows the actual curved/elevated road frame.
       for (let x = -10; x < 10; x += 1.25) {

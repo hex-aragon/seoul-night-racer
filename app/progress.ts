@@ -1,9 +1,11 @@
+import { passedDriving } from './driving-score';
 import { getVehicle } from './vehicles';
 import { ROUTES, type RouteId } from './routes';
 export const STORAGE_KEY = 'seoul-midnight-run.profile.v1';
 export type Result = {
   route: RouteId;
   completed: boolean;
+  drivingScore?: number;
   distance: number;
   time: number;
   passed: number;
@@ -14,6 +16,8 @@ export type Result = {
 };
 export type RecordEntry = {
   bestTime: number | null;
+  bestDrivingScore?: number;
+  lastDrivingScore?: number;
   stars: number;
   attempts: number;
   finishes: number;
@@ -84,6 +88,22 @@ export function parseProfile(raw: string | null): Profile {
               ? r.bestTime
               : null,
           stars: Math.min(3, Math.floor(nonnegative(r.stars))),
+          ...(typeof r.bestDrivingScore === 'number'
+            ? {
+                bestDrivingScore: Math.min(
+                  100,
+                  nonnegative(r.bestDrivingScore),
+                ),
+              }
+            : {}),
+          ...(typeof r.lastDrivingScore === 'number'
+            ? {
+                lastDrivingScore: Math.min(
+                  100,
+                  nonnegative(r.lastDrivingScore),
+                ),
+              }
+            : {}),
           attempts: Math.floor(nonnegative(r.attempts)),
           finishes: Math.floor(nonnegative(r.finishes)),
         };
@@ -141,6 +161,9 @@ export const BADGES: Record<string, string> = {
   veteran: '레벨 5',
 };
 export function awardRun(profile: Profile, result: Result, target: number) {
+  const completed =
+    result.completed &&
+    (result.drivingScore === undefined || passedDriving(result.drivingScore));
   const p: Profile = structuredClone(profile);
   const old = p.records[result.route] || {
     bestTime: null,
@@ -148,12 +171,18 @@ export function awardRun(profile: Profile, result: Result, target: number) {
     attempts: 0,
     finishes: 0,
   };
-  const stars = result.completed
-    ? result.time <= target
-      ? 3
-      : result.time <= target * 1.4
-        ? 2
-        : 1
+  const stars = completed
+    ? result.drivingScore !== undefined
+      ? result.drivingScore >= 98
+        ? 3
+        : result.drivingScore >= 90
+          ? 2
+          : 1
+      : result.time <= target
+        ? 3
+        : result.time <= target * 1.4
+          ? 2
+          : 1
     : 0;
   const newLandmarks = result.landmarks.filter(
     (id) => !p.landmarks.includes(id),
@@ -164,7 +193,7 @@ export function awardRun(profile: Profile, result: Result, target: number) {
       (result.skillXP || 0) +
       result.passed * 12 +
       result.nearMisses * 30 +
-      (result.completed ? 250 + stars * 75 : 0) +
+      (completed ? 250 + stars * 75 : 0) +
       newLandmarks.length * 60,
   );
   p.xp += xp;
@@ -172,17 +201,26 @@ export function awardRun(profile: Profile, result: Result, target: number) {
   p.distance += result.distance;
   p.landmarks = [...new Set([...p.landmarks, ...result.landmarks])];
   p.records[result.route] = {
-    bestTime: result.completed
+    ...(result.drivingScore !== undefined
+      ? {
+          lastDrivingScore: result.drivingScore,
+          bestDrivingScore: Math.max(
+            old.bestDrivingScore || 0,
+            result.drivingScore,
+          ),
+        }
+      : {}),
+    bestTime: completed
       ? Math.min(old.bestTime ?? Infinity, result.time)
       : old.bestTime,
     stars: Math.max(old.stars, stars),
     attempts: old.attempts + 1,
-    finishes: old.finishes + (result.completed ? 1 : 0),
+    finishes: old.finishes + (completed ? 1 : 0),
   };
   const add = (id: string, yes: boolean) => {
     if (yes && !p.badges.includes(id)) p.badges.push(id);
   };
-  add('first', result.completed);
+  add('first', completed);
   add('speed', result.maxSpeed >= 300);
   add('near', result.nearMisses > 0);
   add(
@@ -196,8 +234,7 @@ export function awardRun(profile: Profile, result: Result, target: number) {
     profile: p,
     xp,
     stars,
-    newBest:
-      result.completed && (old.bestTime === null || result.time < old.bestTime),
+    newBest: completed && (old.bestTime === null || result.time < old.bestTime),
     newBadges: p.badges.filter((b) => !profile.badges.includes(b)),
     levelUp: levelInfo(p.xp).level > levelInfo(profile.xp).level,
   };

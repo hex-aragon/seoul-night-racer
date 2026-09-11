@@ -12,9 +12,8 @@ export const SHOWROOM_ASSETS: Record<
   },
   audi: { paint: ['Metallic_3'], yaw: 0 },
   hyundai: { paint: ['Matte__FFFFFFFF__prim_env_1_spec'], yaw: 0 },
-  kia: { paint: ['Material.006'], yaw: Math.PI },
+  kia: { paint: ['body', 'material_7'], yaw: Math.PI },
   tesla: { paint: ['material_9'], yaw: Math.PI },
-  toyota: { paint: ['01_Primary'], yaw: Math.PI },
   lincoln: {
     paint: ['Paint', 'PaintSec'],
     yaw: Math.PI,

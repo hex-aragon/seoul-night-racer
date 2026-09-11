@@ -14,9 +14,9 @@ import {
   stepTraffic,
   requestLaneChange,
 } from '../app/traffic';
-test('ten selectable brands produce distinct geometry and persistent custom paint', () => {
-  assert.equal(VEHICLES.length, 10);
-  assert.equal(new Set(VEHICLES.map((v) => v.brand)).size, 10);
+test('nine selectable brands produce distinct geometry and persistent custom paint', () => {
+  assert.equal(VEHICLES.length, 9);
+  assert.equal(new Set(VEHICLES.map((v) => v.brand)).size, 9);
   for (const v of VEHICLES) {
     const m = buildVehicle(v, new T.MeshStandardMaterial());
     const bounds = new T.Box3().setFromObject(m);

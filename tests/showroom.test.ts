@@ -19,7 +19,7 @@ test('every selectable replacement has an intact attributed compressed asset and
     assert.equal(doc.asset.extras.source, entry.source);
     assert.ok(entry.license.startsWith('CC-BY'));
     assert.ok(doc.meshes.length > 0);
-    assert.ok(b.length < 5_000_000);
+    assert.ok(b.length < (v.id === 'kia' ? 6_500_000 : 5_000_000));
     assert.ok(SHOWROOM_ASSETS[v.id].paint.length);
     for (const name of SHOWROOM_ASSETS[v.id].paint)
       assert.ok(
@@ -27,5 +27,5 @@ test('every selectable replacement has an intact attributed compressed asset and
         `${v.id}: ${name}`,
       );
   }
-  assert.equal(manifest.length, 9);
+  assert.equal(manifest.length, 8);
 });

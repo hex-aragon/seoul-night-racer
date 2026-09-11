@@ -35,7 +35,7 @@ export class TrackWorld {
     public course: Course,
     public scenario: TrafficScenario = course.config.trafficPreset || 'free',
   ) {
-    this.street = new StreetScene(course);
+    this.street = new StreetScene(course, scenario === 'works');
     this.build();
     this.root.add(this.street.root);
   }
