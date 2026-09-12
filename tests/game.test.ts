@@ -151,9 +151,9 @@ test('curve forces move lateral position and can be countersteered', () => {
   assert.notEqual(e.x, before);
 });
 
-test('133 distinct scenic and urban courses have finite geometry and persistent records', () => {
-  assert.equal(ROUTES.length, 133);
-  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 133);
+test('157 distinct scenic and urban courses have finite geometry and persistent records', () => {
+  assert.equal(ROUTES.length, 157);
+  assert.equal(new Set(ROUTES.map((r) => JSON.stringify(r.points))).size, 157);
   for (const route of ROUTES) {
     const c = getCourse(route.id);
     assert(c.length > 2000);
@@ -234,11 +234,11 @@ test('peaceful drive cruises gently, forgives collisions and stays on the road',
   for (let i = 0; i < 50; i++) e.simulate(0.025);
   assert.equal(e.state.speed, 0);
 });
-test('experience settings migrate to racing defaults and persist explicit choices', () => {
+test('experience settings migrate to healing defaults and persist explicit choices', () => {
   const p = parseProfile(
     JSON.stringify({ version: 1, settings: { route: 'hangang' } }),
   );
-  assert(p.settings.daylight && !p.settings.peaceful && !p.settings.cruise);
+  assert(p.settings.daylight && p.settings.peaceful && !p.settings.cruise);
   p.settings.daylight = false;
   p.settings.peaceful = false;
   p.settings.cruise = false;

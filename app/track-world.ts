@@ -1,3 +1,5 @@
+import { buildRegionalTerrain } from './regional-terrain';
+import { RegionalScenery } from './regional-scenery';
 import { StreetScene } from './street-scene';
 import { buildVehicle, TRAFFIC_BODIES } from './vehicle-model';
 import type { TrafficScenario } from './traffic';
@@ -26,6 +28,7 @@ export function prepareStaticGeometry(mesh: T.Mesh) {
 export class TrackWorld {
   root = new T.Group();
   street: StreetScene;
+  regional: RegionalScenery;
   private materials = new Map<string, T.Material>();
   private blocks = new Map<number, T.Group>();
   private water?: T.MeshPhysicalMaterial;
@@ -38,6 +41,8 @@ export class TrackWorld {
     this.street = new StreetScene(course, scenario === 'works');
     this.build();
     this.root.add(this.street.root);
+    this.regional = new RegionalScenery(course);
+    this.root.add(this.regional.root);
   }
   setDaylight(day: boolean) {
     this.root.traverse((o) => {
@@ -84,8 +89,9 @@ export class TrackWorld {
     const grass = this.material(
       pasture ? '#79a954' : forest ? '#38694c' : '#638d58',
     );
-    this.ribbon(-650, coast || river ? 35 : 650, -0.65, grass);
-    if (coast || river) {
+    if (!config.mapSource)
+      this.ribbon(-650, coast || river ? 35 : 650, -0.65, grass);
+    if ((coast || river) && !config.mapSource) {
       this.water = new T.MeshPhysicalMaterial({
         color: coast ? '#318baa' : '#377f92',
         metalness: 0.35,
@@ -259,7 +265,15 @@ export class TrackWorld {
     return this.blocks.get(id)!;
   }
   private placed(s: number, lateral: number) {
-    const f = this.course.sample(s, lateral),
+    const f = this.course.sample(
+        s,
+        this.course.config.lanes &&
+          Math.abs(lateral) >= 11 &&
+          Math.abs(lateral) <= 18
+          ? Math.sign(lateral) *
+              (this.course.roadHalfWidth + Math.abs(lateral) - 11)
+          : lateral,
+      ),
       g = new T.Group();
     g.position.copy(f.position);
     g.rotation.set(f.pitch, f.heading, 0, 'YXZ');
@@ -383,7 +397,7 @@ export class TrackWorld {
       this.box(plane, [10, 0.2, 3], [0, 1, 13], this.material('#618da6'));
       this.box(plane, [0.5, 6, 4], [0, 3, 12], this.material('#618da6'));
     }
-    if (id === 'busan-coast') {
+    if (id === 'busan-coast' || id.startsWith('busan-')) {
       for (let z = 60; z < length; z += 100) {
         const g = this.placed(z, -60 - (z % 4) * 14),
           h = 30 + (z % 7) * 12;
@@ -410,7 +424,7 @@ export class TrackWorld {
         shade.add(umbrella);
       }
     }
-    if (id === 'east-coast') {
+    if (id === 'east-coast' || id === 'gangwon-jeongdongjin') {
       for (const x of [-34, -36])
         this.ribbon(x, x + 0.14, -0.15, this.material('#81949a'));
       for (let z = 0; z < length; z += 8) {
@@ -485,10 +499,14 @@ export class TrackWorld {
         new T.PlaneGeometry(5, 1.8),
         this.text(
           this.scenario === 'works'
-            ? '도로 공사 · 좌측 통행'
+            ? this.course.laneCount === 2
+              ? '갓길 공사 · 서행'
+              : '도로 공사 · 좌측 통행'
             : '정체 구간 · 서행',
           this.scenario === 'works'
-            ? 'RIGHT LANE CLOSED'
+            ? this.course.laneCount === 2
+              ? 'SHOULDER WORK'
+              : 'RIGHT LANE CLOSED'
             : 'KEEP YOUR DISTANCE',
           '#ffcc66',
         ),
@@ -498,7 +516,14 @@ export class TrackWorld {
     }
     if (this.scenario === 'busy') return;
     for (let z = start; z < end; z += 14) {
-      const g = this.placed(z, 6.15);
+      const g = this.placed(
+        z,
+        this.course.config.lanes
+          ? this.course.laneCount === 2
+            ? this.course.roadHalfWidth + 1
+            : this.course.laneCenters.at(-1)! - 1.65
+          : 6.15,
+      );
       this.box(g, [0.65, 0.12, 0.65], [0, 0.06, 0], this.material('#303b3d'));
       const cone = new T.Mesh(
         new T.ConeGeometry(0.3, 0.9, 8),
@@ -573,6 +598,7 @@ export class TrackWorld {
   private build() {
     const { config, length } = this.course;
     const bridge = config.id === 'hangang' || config.theme === 'river';
+    const half = this.course.roadHalfWidth;
     const mountain = config.id === 'namsan' || config.theme === 'hill';
     const scenic = ['coast', 'forest', 'pasture', 'riverside'].includes(
       config.theme || '',
@@ -593,13 +619,18 @@ export class TrackWorld {
     road.map = asphalt;
     road.bumpMap = asphalt;
     road.bumpScale = 0.065;
-    this.ribbon(-11, 11, 0, road, -40, length + 60);
+    this.ribbon(-half, half, 0, road, -40, length + 60);
     const ground = this.box(
       this.root,
       [3000, 1, length + 1800],
       [0, -1, -length / 2],
       this.material(mountain ? '#102723' : bridge ? '#101e28' : '#17232f'),
     );
+    if (config.mapSource) {
+      ground.visible = false;
+      this.root.add(buildRegionalTerrain(this.course));
+      this.ribbon(-half - 19, half + 19, -0.75, this.material('#708e62'));
+    }
     if (scenic) {
       ground.visible = false;
       this.nature(config.theme!);
@@ -621,29 +652,29 @@ export class TrackWorld {
     }
     for (const side of [-1, 1]) {
       this.ribbon(
-        side < 0 ? -14 : 11,
-        side < 0 ? -11 : 14,
+        side < 0 ? -half - 3 : half,
+        side < 0 ? -half : half + 3,
         0.05,
         this.material('#32414e'),
       );
       this.ribbon(
-        side * 10.65 - 0.07,
-        side * 10.65 + 0.07,
+        side * (half - 0.35) - 0.07,
+        side * (half - 0.35) + 0.07,
         0.02,
         this.material('#e2bd6c'),
       );
       const railSegment = (start: number, end: number) => {
         this.ribbon(
-          side * 11.1 - 0.08,
-          side * 11.1 + 0.08,
+          side * (half + 0.1) - 0.08,
+          side * (half + 0.1) + 0.08,
           0.62,
           this.material('#657f90'),
           start,
           end,
         );
         this.ribbon(
-          side * 11.1 - 0.1,
-          side * 11.1 + 0.1,
+          side * (half + 0.1) - 0.1,
+          side * (half + 0.1) + 0.1,
           1.1,
           this.material('#97b1c2'),
           start,
@@ -659,15 +690,15 @@ export class TrackWorld {
         }
         if (cursor < end) railSegment(cursor, end);
       };
-      if (side < 0) rail(0, length);
+      if (side < 0 || config.mapSource) rail(0, length);
       else
         for (let start = 0; start < length; start += 500) {
           rail(start, Math.min(length, start + 120));
           if (start + 320 < length)
             rail(start + 320, Math.min(length, start + 500));
           this.ribbon(
-            11,
-            18,
+            half,
+            half + 7,
             -0.02,
             road,
             start + 120,
@@ -687,9 +718,16 @@ export class TrackWorld {
     for (let s = 0; s < length; s += 14) {
       if (this.street.crossings.some((c) => Math.abs(c.z - s) < 9)) continue;
       const frame = this.placed(s, 0);
-      for (const lane of [-6, -2, 2, 6])
-        this.box(frame, [0.13, 0.025, 6], [lane, 0.025, -3], stripe);
+      for (const lane of Array.from(
+        { length: this.course.laneCount - 1 },
+        (_, i) => (i + 1 - this.course.laneCount / 2) * this.course.laneWidth,
+      ))
+        if (!this.course.config.lanes || Math.abs(lane) > 0.1)
+          this.box(frame, [0.13, 0.025, 6], [lane, 0.025, -3], stripe);
     }
+    if (this.course.config.lanes)
+      for (const x of [-0.13, 0.13])
+        this.ribbon(x - 0.05, x + 0.05, 0.04, this.material('#e5bc58'));
     const facade = Array.from({ length: 6 }, (_, i) => this.facade(i));
     for (let s = 0, index = 0; !scenic && s < length; s += 40, index++) {
       for (const side of [-1, 1]) {
@@ -733,11 +771,20 @@ export class TrackWorld {
           [0, height, 0],
           this.material('#607b8e'),
         );
-        if (index % 3 === 0) {
+        if (index % 3 === 0 && config.id !== 'jeolla-jeonju') {
           const sign = new T.Mesh(
             new T.PlaneGeometry(8, 3),
             this.text(
-              ['서울의 밤', 'MIDNIGHT', '한강 드라이브', 'CITY POP'][index % 4],
+              config.mapSource
+                ? [
+                    config.district + ' 산책',
+                    '동네 책방',
+                    '쉬어가는 길',
+                    'COFFEE',
+                  ][index % 4]
+                : ['서울의 밤', 'MIDNIGHT', '한강 드라이브', 'CITY POP'][
+                    index % 4
+                  ],
               'SEOUL NIGHT RUN',
               config.color,
             ),
@@ -839,13 +886,18 @@ export class TrackWorld {
       g.add(sign);
     }
     const finish = this.placed(length, 0);
-    this.box(finish, [22, 0.08, 4], [0, 0.07, 0], this.material('#eaf4ff'));
-    for (let i = 0; i < 22; i++)
+    this.box(
+      finish,
+      [half * 2, 0.08, 4],
+      [0, 0.07, 0],
+      this.material('#eaf4ff'),
+    );
+    for (let i = 0; i < Math.floor(half * 2); i++)
       if (i % 2 === 0)
         this.box(
           finish,
           [1, 0.09, 4],
-          [-10.5 + i, 0.085, 0],
+          [-half + 0.5 + i, 0.085, 0],
           this.material('#121925'),
         );
     const sign = new T.Mesh(
@@ -1000,6 +1052,7 @@ export class TrackWorld {
     label.add(sign);
   }
   animate(t: number, time = 0, distance = 0) {
+    this.regional.update(distance);
     this.street.update(time, distance);
     for (const rotor of this.rotors) rotor.rotation.z = t * 0.00025;
     if (this.fountains)
@@ -1008,6 +1061,7 @@ export class TrackWorld {
     if (this.water) this.water.roughness = 0.25 + Math.sin(t * 0.0003) * 0.035;
   }
   dispose() {
+    this.regional.dispose();
     this.street.dispose();
     const seen = new Set<T.Material>();
     this.root.traverse((o) => {

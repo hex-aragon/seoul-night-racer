@@ -1,6 +1,8 @@
 import { signalSpeedLimit, type Crossing } from './signals';
 export type TrafficScenario = 'free' | 'works' | 'busy';
 export type TrafficMotion = {
+  direction?: 1 | -1;
+  laneCenters?: number[];
   body?: number;
   length?: number;
   width?: number;
@@ -30,25 +32,32 @@ export function createMotion(
   index: number,
   random: () => number,
   origin = 0,
+  lanes?: number[],
 ): TrafficMotion {
   const kind = index < 8 && index % 4 === 3 ? 'motorcycle' : 'car',
-    merge = index % 5 === 1 || index === 7;
-  const x = merge ? 16 : [-8, -4, 0, 4, 8][Math.floor(random() * 5)];
+    merge = !lanes && (index % 5 === 1 || index === 7);
+  const centers = lanes || [-8, -4, 0, 4, 8];
+  const x = merge ? 16 : centers[index % centers.length];
   return {
     x,
+    direction: lanes && x < 0 ? -1 : 1,
+    laneCenters: lanes,
     body: [0, 3, 5, 0, 4, 2, 6, 0, 1, 5, 4, 0, 3, 1, 2, 6][index % 16],
-    z:
-      origin +
-      (merge
-        ? 180 + Math.floor(index / 5) * 500
+    z: lanes
+      ? origin + 120 + index * 95
+      : origin +
+        (merge
+          ? 180 + Math.floor(index / 5) * 500
+          : kind === 'motorcycle'
+            ? -100 - index * 10
+            : 85 + index * 62),
+    speed: lanes
+      ? 9 + random() * 6
+      : merge
+        ? 0
         : kind === 'motorcycle'
-          ? -100 - index * 10
-          : 85 + index * 62),
-    speed: merge
-      ? 0
-      : kind === 'motorcycle'
-        ? 27 + random() * 12
-        : 16 + random() * 12,
+          ? 27 + random() * 12
+          : 16 + random() * 12,
     kind,
     targetX: x,
     fromX: x,
@@ -66,6 +75,12 @@ export function requestLaneChange(
   player: { z: number; x: number; speed: number },
   random: () => number,
 ) {
+  if (
+    v.laneCenters &&
+    (!v.laneCenters.includes(target) ||
+      Math.sign(target) !== (v.direction || 1))
+  )
+    return false;
   const gap = v.kind === 'motorcycle' ? 10 : 17;
   if (
     others.some(
@@ -106,12 +121,41 @@ export function stepTraffic(
   },
 ) {
   v.elapsed += dt;
+  if (v.direction === -1) {
+    let speed = v.speed;
+    for (const other of others)
+      if (
+        other !== v &&
+        other.direction === -1 &&
+        other.z < v.z &&
+        v.z - other.z < 32 &&
+        Math.abs(other.x - v.x) < 2
+      )
+        speed = Math.min(
+          speed,
+          Math.max(
+            0,
+            (v.z -
+              other.z -
+              ((v.length || 4.6) + (other.length || 4.6)) / 2 -
+              3) *
+              1.2,
+          ),
+        );
+    v.actualSpeed = speed;
+    v.z -= speed * dt;
+    return;
+  }
+  const available = v.laneCenters?.filter((x) => x > 0);
+
   if (v.phase === 'cruise') {
     v.nextEvent -= dt;
     if (v.nextEvent <= 0 && (!v.merge || v.z - player.z < 260)) {
-      const target = v.merge
-        ? 8
-        : Math.max(-8, Math.min(8, v.x + (random() < 0.5 ? -4 : 4)));
+      const target = available
+        ? available[Math.floor(random() * available.length)]
+        : v.merge
+          ? 8
+          : Math.max(-8, Math.min(8, v.x + (random() < 0.5 ? -4 : 4)));
       if (target !== v.x) requestLaneChange(v, target, others, player, random);
       v.nextEvent = 3 + random() * 7;
     }
@@ -152,10 +196,15 @@ export function stepTraffic(
         speed = Math.min(speed, Math.floor(time / 9) % 3 === 0 ? 0 : 5);
       if (scenario === 'works') {
         speed = Math.min(speed, 10);
-        if (v.x > 5 && v.z > start - 90) {
+        const outer = available?.at(-1) ?? 8;
+        const mergeTarget = available
+          ? available[Math.max(0, available.length - 2)]
+          : 4;
+        const closesLane = !available || available.length > 1;
+        if (closesLane && v.x > outer - 1.5 && v.z > start - 90) {
           if (v.phase === 'cruise')
-            requestLaneChange(v, 4, others, player, random);
-          if (v.x > 5.5)
+            requestLaneChange(v, mergeTarget, others, player, random);
+          if (v.x > outer - 1.5)
             speed = Math.min(speed, Math.max(0, (start - v.z - 12) * 0.4));
         }
       }

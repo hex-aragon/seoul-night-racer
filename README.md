@@ -1,50 +1,48 @@
-# Seoul / Midnight Run — Chapter 11
+# Seoul / Drive — Korean road trips
 
 Play: https://hex-aragon.github.io/seoul-night-racer/
 
-Three.js browser arcade racing with ten detailed attributed vehicle assets, original city-pop BGM and procedural Seoul-inspired courses. Courses reinterpret landmarks for a game; they are not reproductions of real roads.
+A static Three.js driving game with a rotating vehicle showroom, original city-pop BGM, local progression and 24 featured Korean road trips. Deployed through GitHub Pages.
 
-## Courses
+## Regional maps
 
-- **한강 브리지 런**: curved riverside approach, double-deck Banpo-inspired bridge, rainbow fountains, river skyline, 63 Square.
-- **남산 와인딩**: continuous S bends, hills, trees, N Seoul Tower.
-- **서울 랜드마크 투어**: city bends, Gwanghwamun, Cheonggyecheon, Lotte World Tower.
+The two-column, vertically scrolling destination picker includes Seoul (Bukak, Hangang, Jamsil, Seongsu), Incheon (Yeongjong, Songdo, Ganghwa), Gapyeong (Cheongpyeong, Homyeong, Bukhangang), Gangwon (Gyeongpo, Jeongdongjin, Yangyang, Daegwallyeong, Chuncheon), Busan (Dalmaji, Gwangalli, Songjeong) and Jeolla (Damyang, Suncheon, Yeosu, Byeonsan, Jeonju, Jindo).
 
-All 133 maps are available immediately: the three landmark routes, 120 deterministic Seoul district variations and ten scenic destinations. Slide the ten featured destinations along the bottom of the showroom, or select any route in the full-course dropdown. Each variant has distinct curves, elevation, length, skyline scale and palette; they are fictional arcade routes, not geographic road data. The minimap follows the selected course. Steering counters outward drift in curves; use the brake before fast corners.
+These 24 routes use OpenStreetMap/OSRM road centerlines, converted to local metric coordinates and smoothed with centripetal splines. Their endpoints and horizontal scale are retained. **Elevation, lane counts, shoreline, terrain and buildings are artistic reconstruction, not surveyed data or 1:1 city replicas.** Each course uses two, four or six total lanes. Right-hand traffic and oncoming traffic occupy separate sides; same-direction vehicles indicate before merging. Two-lane roadworks take place on the shoulder instead of closing the only forward lane.
 
-## Controls
+The old 133 fictional arcade courses remain in the full-course dropdown, for 157 courses in total. Each course is a bounded route, not a freely navigable city street network. These maps are not navigation aids.
 
-- WASD / arrow keys: accelerate, brake, steer
-- Q / E or visible − / + paddles: shift down / up in AT or MT. AT holds a paddle selection for three seconds before automatic shifting resumes. Unsafe downshifts are rejected.
-- Two visible camera buttons (or C): distant chase view / windshield view
-- Space or the drift button: drift while steering above 60 km/h; braking while steering above 80 km/h also initiates a slide.
-- P / Escape: pause
-- Enter: start / restart
-- Mouse / touch: hold the large left/right arrow buttons and accelerator / brake pedals simultaneously. The small wheel is a steering indicator. Scene drag gestures remain available.
-- AT / MT: automatic or sequential manual 1–7 speed transmission
-- P / R / N / D selector buttons on the instrument panel: parking lock, reverse, neutral, forward. Stop before changing direction or engaging P. Reverse is limited to 28 km/h and switches the camera to look behind. Braking stops the car without automatically engaging reverse.
-- Runs start 20 m into the route, allowing a short reverse maneuver. Route boundaries limit travel; these are road courses, not an open-world parking simulator.
-- Settings button in the garage / Escape while driving: adjust BGM and engine volume
+Six original Blender assets—tiled-roof hanok, pavilion, café terrace, lighthouse, barn and seaside station—are loaded on demand and batched by material. Curving roads sit on a continuous height field to avoid wide-ribbon terrain folds. Trees use GPU instancing. Source `.blend` files and reproducible scripts are in `art/`.
 
-In racing mode, a vehicle, guardrail or roadblock collision ends the run. Cones slow the car and break the combo. A time limit, three bonus-time checkpoints, obstacle-dodge rewards and drift XP create a time-attack challenge. Restart the same route or return to the garage to select another map.
+Map source data and attribution: [public/maps/ATTRIBUTION.md](public/maps/ATTRIBUTION.md). Regional models: [public/models/regions/ATTRIBUTION.md](public/models/regions/ATTRIBUTION.md). Higgsfield installation was approved, but its connection has not completed; no Higgsfield assets are claimed.
 
-## Local progression
+## Driving and interface
 
-XP, levels, best times, route stars, discovered landmarks, achievements, paint, transmission and audio settings are stored in `localStorage` under `seoul-midnight-run.profile.v1`. No account or server is needed. Storage is specific to this browser and origin; clearing site data removes it. If storage is unavailable, a visible warning explains that only the current session is retained.
+The default is a peaceful drive, with forgiving collisions, gentle curve assistance and manual accelerator/brake input. Day and night remain selectable. Existing profiles migrate once to peaceful driving; subsequent explicit choices persist. The default camera follows the car from behind. Top buttons switch between chase and windshield cameras or open settings.
 
-Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Completion records and the original time-based stars remain in the results and settings. A slower or crashed run never replaces a better record.
+The bottom contains **only left/right steering, brake, accelerator and speed**. The car remains above the controls. No fog, backdrop blur, film grain or speed streaks. Traffic lights, crossing stop lines and signal HUD have been removed from every route. There is no driving grade, deduction or 80-point requirement: crossing the finish completes the route.
 
-## Audio and models
+- WASD / arrows: accelerate, brake, steer. Touch supports simultaneous held arrows and pedals.
+- C: switch camera. Escape/P: pause and settings. Enter: start/restart.
+- Q/E: sequential gear shifts; AT temporarily holds a paddle override.
+- Settings contain AT/MT, P/R/N/D, fuel/refuelling, audio, roadworks/congestion and saved records. Stop before reverse or P. Reverse is capped at 28 km/h. Fuel depletion cuts the engine; braking remains available.
+- Optional cruise can be enabled in settings. Optional racing retains vehicle/guardrail/barrier collisions, time limits and obstacle challenges.
 
-`Han River Afterglow` is an original 104 BPM city-pop-inspired instrumental, synthesized from electric-piano chords, bass, drums and a lead motif. The BGM uses no commercial recordings or third-party samples. The score and generated audio are dedicated to CC0; see `public/AUDIO-CREDITS.md`. The music is prerendered in an OfflineAudioContext and played as a loop, avoiding main-thread scheduling dropouts.
+## Vehicles and audio
 
-Engine audio blends two real-recording-derived loops by qubodup (CC BY 3.0) and domasx2 (CC0), with RPM-dependent playback, throttle response and gear-change pitch drops. Filtered tire noise accompanies drifting. It is not an actual Ferrari recording; source links, attribution and processing details are in `public/AUDIO-CREDITS.md`. Audio starts after a user gesture and fades during pause/game-over.
+One vehicle appears at a time. Choose a brand, drag to orbit, choose paint and select a destination. Nine attributed detailed models: Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, Genesis Coupe Custom, Kia Stinger, Tesla Model S and Lincoln Continental Mark V. Toyota is removed. G80 and Lincoln MKZ replacements remain unavailable; existing models keep accurate names. Specifications are arcade tuning, not manufacturer claims.
 
-All nine vehicle model credits: `public/models/ATTRIBUTION.md`. Higgsfield assets remain unintegrated because the plugin connection has not completed.
+Each source retains its license, including Porsche CC BY-SA and Tesla CC BY-NC. This free game is noncommercial. [Vehicle credits](public/models/ATTRIBUTION.md), [street/sky/asphalt credits](public/models/street/ATTRIBUTION.md).
 
-## Development and validation
+`Han River Afterglow` is an original 104 BPM city-pop instrumental dedicated to CC0, generated without commercial recordings. Engine loops derive from attributed real recordings and react to RPM, throttle and gear shifts; they are not manufacturer-specific recordings. Tesla has a single-speed powertrain and synthesized electric sound. [Audio credits](public/AUDIO-CREDITS.md).
 
-Requires Node.js 22.13+.
+## Local saves
+
+XP, levels, best times, stars, records, paint and preferences persist in browser `localStorage` under `seoul-midnight-run.profile.v1`. No login or game server is required. Completion rewards are recorded once. Storage is origin/browser-specific; clearing site data removes saves. Parking missions remain future work; P currently locks the car.
+
+## Development
+
+Node.js 22.13+:
 
 ```sh
 npm ci
@@ -52,54 +50,11 @@ npm run dev
 npm test
 npm run typecheck
 npm run build
+python3 scripts/check-public-files.py dist
 ```
 
-Tests cover course continuity, curve forces, collision and finish outcomes, once-only rewards, corrupt-storage recovery, XP, stars and best records. Browser checks cover map switching, music-buffer output, crash/restart/finish, local persistence, and mobile controls. A development-only `?qa` URL exposes the engine for controlled test checkpoints; this hook is stripped from production.
+`main` deploys via GitHub Actions after automated checks. Vite uses the repository base path. `?qa` exposes development-only controls, stripped from production.
 
-`dist/` is a static site. GitHub Actions deploys `main` to GitHub Pages with the repository base path configured in `vite.config.ts`.
+Tests cover measured route endpoints and distance, finite continuous geometry, non-folding terrain, 2/4/6-lane traffic including work zones, model integrity, control physics, fuel, collision/completion and local records. Historical signal utilities and their isolated tests remain as unused source; live street scenes instantiate no crossings or lights.
 
-## Extension points
-
-`app/drivetrain.ts` separates signed velocity, selector, gear and RPM from route progression. `VehicleSpec` contains combustion/electric powertrain, gear count, speed limits and regenerative deceleration parameters. Parking missions and free steering through parking lots remain future work; P currently locks the vehicle, not a parking minigame. The selectable Tesla Model S uses a single-speed electric powertrain, battery gauge, stronger coasting deceleration, a small regenerative charge return and synthesized electric motor sound. It does not expose manual gear paddles.
-
-## Driver-focused interface
-
-A compact bottom panel holds large steering arrows and a wheel indicator, accelerator, brake, speed, compass heading, forward/reverse gear, fuel gauge and AT/MT selection. Racing adds a small timer, dodge/combo counter and upcoming hazard/curve warning; peaceful mode keeps this ribbon hidden. The two top camera buttons select a distant chase view (12 m behind and 4.6 m high) or windshield view (the car exterior is hidden). The settings icon or Escape pauses driving and opens the settings modal; double-tapping scenery also opens it.
-
-Daylight adjusts sky, fog, sun lighting and building glass textures; night restores illuminated scenery. Peaceful mode offers forgiving collisions and gentle curve assistance. Manual pedals are the default, including a one-time migration of the earlier auto-cruise default. Optional cruise and other settings persist locally. Racing is the new default (including a one-time migration), and peaceful driving remains selectable.
-
-Fuel is a game-scaled percentage, not a real Ferrari consumption estimate. Idling, travel and acceleration consume fuel. Below 20%, the panel shows a low-fuel indicator and a refuel button. At zero, engine audio cuts out and the car coasts to a stop; braking continues to work. Refuelling is available only below 1 km/h and restores the tank. A new drive starts with full fuel. Fuel consumption and position freeze while paused.
-
-Tests cover fuel consumption/depletion and default migration in addition to drivetrain, collisions and progression. Browser validation covers visible controls, both cameras, braking, refuelling, reverse, settings, 320px layout and simultaneous touch with cancellation.
-
-## Scenic drives and live traffic
-
-Ten featured fictional courses reinterpret Incheon Yeongjong, East Coast, Jeju Aewol, Han River riverside, Inje birch forest, Damyang tree avenue, Daegwallyeong ranch, Namhae, Seorak mountain forest and Busan Haeundae Dalmaji. The default catalog highlights these ten, with all 133 routes still available in the full catalog. They use distinct coast/water, river/park, woodland and pasture scenery. The ranch includes sheep, a barn and animated wind turbines. These are inspired game environments, not geographic road reproductions.
-
-Every course has sixteen traffic vehicles including two motorcycles. The seven road-vehicle body classes are compact, sedan, SUV, pickup/light truck, box truck, dump truck and bus. Trucks have larger collision footprints, longer gap checks and lower cruising speeds. A new seeded traffic sequence is chosen for each drive. Vehicles signal at least 1.5 seconds before smoothly changing lanes, check the destination gap and wait when blocked. Shoulder entries align with gaps in the right barrier; one motorcycle approaches from behind and another merges. Following traffic slows behind occupied lanes and the player. Vehicles recycle well away from the immediate driving area.
-
-Steering uses a responsive input curve, speed-sensitive gain, a bounded response rate and smooth centering of the wheel. Large holdable left/right arrows are the primary touch controls. Lateral momentum and stronger curve forces reward countersteering in racing mode. Seven gears permit acceleration to a game maximum of 320 km/h, with no separate 120 km/h cap. AT/MT and forward-neutral selection work during driving; reverse and parking require stopping. Releasing the wheel no longer pulls the vehicle toward the road center; peaceful assistance only nudges it away from the outer edge. The visible wheel interpolates between HUD updates.
-
-## Vehicle garage and road conditions
-
-One large 3D car is shown at a time. Switch brands using the top rail or previous/next arrows, drag the car to orbit through 360 degrees, choose a paint color, select a destination from the horizontal bottom rail, and start driving. Keyboard users can rotate the focused preview with arrow keys. Settings hold road conditions and audio controls.
-
-Ferrari 458 Italia, Porsche 911 Carrera 4S, Mercedes Maybach, Audi R8, BMW M4, a customized Hyundai coupe, Kia Stinger, Tesla Model S and Lincoln Continental Mark V use attributed detailed models. The eight replacement GLBs load on demand; the detailed Stinger is about 5.9 MB. Each model keeps its original license; Porsche is CC BY-SA and Tesla is CC BY-NC. This free game is noncommercial. See `public/models/ATTRIBUTION.md` and `public/models/showroom/manifest.json`. Geometry, material, interior and wheel detail vary with the source asset. All driving specifications are arcade tuning, not manufacturer claims. Vehicle, paint and road condition persist locally.
-
-Each route offers everyday traffic, roadworks or rush-hour congestion, with a recommended condition attached to featured destinations. Roadworks close the right lane with cones, warning boards, parked dump trucks, workers and excavators. Traffic signals and merges left or waits for a gap before the closure. Congestion creates a slow queue that stops and starts; extra time is added to timed challenges. Player controls and collision behavior remain active in both situations.
-
-Incheon adds airport scenery, city buildings and a bridge; East Coast adds a coastal railway and rock formations; Busan adds beach umbrellas, towers and a bridge; Jeju adds stone walls and palms; Namhae adds tiled-roof houses; Seorak adds mountain rock formations. Existing birch forest, tree avenues, pasture sheep and wind turbines remain. Road geometry and scenery reinterpret the places for a game.
-
-## Blender street kit and working crossings
-
-The original Blender-made signal masts, sun visors, pedestrian signals, glass shelters, timber benches and branching trees replace bare street furniture and simple spherical trees. Source `.blend` files and the reproducible script are in `art/`. The three GLBs total roughly 525 KB; tree meshes use GPU instancing. Asphalt aggregate is authored in Blender. A CC0 Poly Haven HDRI supplies the daytime sky and outdoor reflections, with local sun shadows; the night palette and car showroom retain separate lighting. See `public/models/street/ATTRIBUTION.md`. Higgsfield installation was approved but its connection was not completed; no Higgsfield assets are claimed or bundled.
-
-All 133 fictional routes have crossings, placed outside bridge decks, work zones, landmarks and the finish. White zebra stripes, stop lines, tactile pavers, bollards and gaps in guardrails mark the crossing. Vehicle signals run 18 seconds green, 3 amber, 11 red. Pedestrian lights have clearance intervals and never show walk alongside vehicle green. Cars, trucks and motorcycles brake before the line and accelerate on green. Vehicles already committed on amber clear the crossing. Player pedals remain under manual control; the compact signal indicator shows phase, distance and remaining seconds. The race countdown pauses while stopped within 22 m of a red/amber stop line; pause freezes the signal clock. Signal compliance is not a hard collision or automatic restart rule.
-
-Browser verification uses the development-only `?qa` crossing preview button; it is stripped from production. Rebuild the original kit with `/Applications/Blender.app/Contents/MacOS/Blender --background --python art/build_street.py` on macOS (or your Blender executable on other platforms).
-
-## Minimal driving interface
-
-Driving grades, deductions and the 80-point finish requirement have been removed. Crossing the finish completes the route. The bottom bar contains only left/right steering, brake, accelerator and speed. Camera/settings remain at the top. Backdrop blur, grain, fog and speed streaks are disabled; the chase camera aims closer to the car to keep the body above the controls. Fuel, refuelling and transmission options remain accessible in settings.
-
-Toyota is removed; previously saved Toyota selection falls back to Ferrari. Kia now uses the actual Stinger model. The Genesis slot retains the attributed Genesis Coupe Custom model; a G80 replacement and Lincoln MKZ replacement are pending authorized asset downloads. The Lincoln slot still accurately identifies its Continental Mark V model.
+Rebuild regional architecture in Blender with `blender --background --python art/build_regional.py`. Refresh road snapshots explicitly with `python3 scripts/fetch-korean-roads.py`; runtime play uses bundled data and never calls routing servers.

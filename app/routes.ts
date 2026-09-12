@@ -1,3 +1,4 @@
+import koreanRoads from './korean-roads.json';
 import { CatmullRomCurve3, Vector3 } from 'three';
 export type RouteId = string;
 export type Landmark = {
@@ -30,6 +31,9 @@ export type RouteConfig = {
   seed?: number;
   heightScale?: number;
   featured?: boolean;
+  lanes?: 2 | 4 | 6;
+  regionalAsset?: string;
+  mapSource?: string;
   trafficPreset?: 'free' | 'works' | 'busy';
 };
 const points = (n: number, f: (s: number) => [number, number, number]) =>
@@ -288,9 +292,88 @@ ROUTES.unshift(
     }),
   ),
 );
+// Real road centerlines. Elevation, lane counts and architecture are stylized game scenery.
+function roadPoints(coordinates: number[][], theme: string) {
+  const [lon, lat] = coordinates[0],
+    scaleX = 111320 * Math.cos((lat * Math.PI) / 180);
+  const raw = coordinates.map(
+    ([x, y]) => new Vector3((x - lon) * scaleX, 7, -(y - lat) * 111320),
+  );
+  const kept = [raw[0]];
+  for (let i = 1; i < raw.length; i++)
+    if (raw[i].distanceTo(kept[kept.length - 1]) > 15) kept.push(raw[i]);
+  if (kept[kept.length - 1].distanceTo(raw[raw.length - 1]) > 1)
+    kept.push(raw[raw.length - 1]);
+  // Keep full horizontal scale and coordinates; gentle fictional altitude avoids flat mountain drives.
+  for (let i = 0; i < kept.length; i++)
+    kept[i].y +=
+      Math.sin((i / (kept.length - 1)) * Math.PI) *
+      (theme === 'forest' ? 30 : theme === 'pasture' ? 45 : 2);
+  return kept;
+}
+ROUTES.forEach((r) => (r.featured = false));
+ROUTES.unshift(
+  ...koreanRoads.map(
+    (r, i): RouteConfig => ({
+      id: r.id,
+      name: r.name,
+      district: r.region,
+      subtitle: r.region + ' · 여유로운 로드트립',
+      description: '실제 도로 경로를 따라 달리는 드라이브 · 주변 풍경은 재구성',
+      heightScale:
+        r.id === 'jeolla-jeonju'
+          ? 0.12
+          : r.id === 'seoul-seongsu'
+            ? 0.25
+            : r.id === 'incheon-songdo'
+              ? 1.35
+              : 1,
+      theme: r.theme as RouteConfig['theme'],
+      lanes: r.lanes as 2 | 4 | 6,
+      regionalAsset: r.asset,
+      featured: true,
+      mapSource: 'OpenStreetMap / OSRM',
+      trafficPreset: 'free',
+      seed: 500 + i,
+      color:
+        r.theme === 'coast'
+          ? '#6aa7bd'
+          : r.theme === 'city'
+            ? '#8fa9ba'
+            : '#89b594',
+      sky: '#183341',
+      difficulty: '힐링 · 왕복 ' + r.lanes + '차선',
+      target: r.distance / 20,
+      points: roadPoints(r.coordinates, r.theme),
+      landmarks: [],
+    }),
+  ),
+);
 export class Course {
   curve: CatmullRomCurve3;
   length: number;
+  get laneWidth() {
+    return this.config.lanes ? 3.6 : 4;
+  }
+  get laneCount() {
+    return this.config.lanes || 5;
+  }
+  get roadHalfWidth() {
+    return this.config.lanes ? (this.laneCount * this.laneWidth) / 2 + 0.5 : 11;
+  }
+  get laneCenters() {
+    return Array.from(
+      { length: this.laneCount },
+      (_, i) => (i - (this.laneCount - 1) / 2) * this.laneWidth,
+    );
+  }
+  get playerStartX() {
+    return this.config.lanes ? this.laneWidth / 2 : 0;
+  }
+  get playerLimit() {
+    return this.roadHalfWidth - 1.15;
+  }
+
   constructor(public config: RouteConfig) {
     this.curve = new CatmullRomCurve3(config.points, false, 'centripetal');
     this.curve.arcLengthDivisions = 2500;

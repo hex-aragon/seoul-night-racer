@@ -654,7 +654,7 @@ export class RaceEngine {
     this.scene.fog = null;
     this.state = { ...initial(route), loaded, error };
     this.configureExperience(this.daylight, this.peaceful, this.cruise);
-    this.x = 0;
+    this.x = this.course.playerStartX;
     this.steer = 0;
     this.resetTraffic();
     this.snapCamera();
@@ -662,7 +662,12 @@ export class RaceEngine {
   };
   private buildTraffic() {
     for (let i = 0; i < 16; i++) {
-      const motion = createMotion(i, this.trafficRandom);
+      const motion = createMotion(
+        i,
+        this.trafficRandom,
+        0,
+        this.course.config.lanes ? this.course.laneCenters : undefined,
+      );
       const body = TRAFFIC_BODIES[motion.body || 0];
       const mesh =
         motion.kind === 'motorcycle'
@@ -760,7 +765,11 @@ export class RaceEngine {
       this.course.length,
       Math.floor(Math.random() * 100000),
     );
-    if (this.scenario === 'works') {
+    if (this.course.config.lanes)
+      this.hazards = this.hazards.filter(
+        (h) => Math.abs(h.x) < this.course.playerLimit - 1,
+      );
+    if (this.scenario === 'works' && this.course.laneCount > 2) {
       const zone = this.roadZone;
       this.hazards = this.hazards.filter(
         (h) => h.z < zone.start - 120 || h.z > zone.end + 80,
@@ -769,7 +778,7 @@ export class RaceEngine {
         this.hazards.push({
           id: 10000 + z,
           z,
-          x: 8,
+          x: this.course.config.lanes ? this.course.laneCenters.at(-1)! : 8,
           kind: 'cones',
           hit: false,
           passed: false,
@@ -833,10 +842,22 @@ export class RaceEngine {
   private resetTraffic() {
     this.trafficRandom = rng(Math.floor(Math.random() * 2147483647));
     this.traffic.forEach((c, i) => {
-      Object.assign(c, createMotion(i, this.trafficRandom));
+      Object.assign(
+        c,
+        createMotion(
+          i,
+          this.trafficRandom,
+          0,
+          this.course.config.lanes ? this.course.laneCenters : undefined,
+        ),
+      );
       if (this.scenario === 'busy' && i >= 4) {
         c.z = this.roadZone.start - 65 + Math.floor((i - 4) / 3) * 22;
-        c.x = [-4, 0, 4][(i - 4) % 3];
+        const lanes = this.course.config.lanes
+          ? this.course.laneCenters.filter((x) => x > 0)
+          : [-4, 0, 4];
+        c.x = lanes[(i - 4) % lanes.length];
+        c.direction = 1;
         c.fromX = c.targetX = c.x;
         c.merge = false;
         c.speed = 7;
@@ -848,17 +869,13 @@ export class RaceEngine {
       c.passed = false;
     });
   }
-  previewCrossing = () => {
+  previewRoad = () => {
     if (!import.meta.env.DEV) return;
     this.start();
-    const c = this.world.street.crossings[0];
-    if (c) {
-      this.state.distance = c.stop - 32;
-      this.state.time = 7;
-      this.state.camera = 0;
-      this.cruise = false;
-      this.drive.velocity = 0;
-    }
+    this.state.distance = 60;
+    this.state.camera = 0;
+    this.cruise = false;
+    this.drive.velocity = 0;
   };
   start = () => {
     if (!this.state.loaded || this.state.error) return;
@@ -881,7 +898,7 @@ export class RaceEngine {
         this.world.street.crossings.length * 11 +
         (this.scenario === 'busy' ? 45 : this.scenario === 'works' ? 25 : 0),
     };
-    this.x = 0;
+    this.x = this.course.playerStartX;
     this.steer = 0;
     this.hit = 0;
     this.keys.clear();
@@ -894,7 +911,7 @@ export class RaceEngine {
   garage = () => {
     const { route, loaded, error } = this.state;
     this.state = { ...initial(route), loaded, error };
-    this.x = 0;
+    this.x = this.course.playerStartX;
     this.steer = 0;
     this.keys.clear();
     this.steeringInput = 0;
@@ -1064,18 +1081,31 @@ export class RaceEngine {
       dt,
     );
     this.x += this.lateralVelocity * dt;
-    if (this.peaceful && Math.abs(this.x) > 9.3 && Math.abs(input) < 0.02)
-      this.x = T.MathUtils.damp(this.x, Math.sign(this.x) * 9, 1, dt);
+    if (
+      this.peaceful &&
+      Math.abs(this.x) > this.course.playerLimit - 0.7 &&
+      Math.abs(input) < 0.02
+    )
+      this.x = T.MathUtils.damp(
+        this.x,
+        Math.sign(this.x) * (this.course.playerLimit - 1),
+        1,
+        dt,
+      );
     s.steering = this.steer;
     s.offset = this.x;
     s.curve = curve;
     s.bearing =
       (360 - (this.course.sample(s.distance).heading * 180) / Math.PI) % 360;
-    if (Math.abs(this.x) > 10.2 && s.speed > 15) {
-      this.x = clamp(this.x, -10.2, 10.2);
+    if (Math.abs(this.x) > this.course.playerLimit && s.speed > 15) {
+      this.x = clamp(this.x, -this.course.playerLimit, this.course.playerLimit);
       if (this.peaceful) {
-        this.drive.velocity *= 0.75;
-        this.x = clamp(this.x, -9.7, 9.7);
+        this.drive.velocity *= 0.95;
+        this.x = clamp(
+          this.x,
+          -this.course.playerLimit + 0.5,
+          this.course.playerLimit - 0.5,
+        );
       } else {
         this.finish('barrier');
         return;
@@ -1189,7 +1219,7 @@ export class RaceEngine {
         car.hit = true;
         if (this.peaceful) {
           this.drive.velocity = Math.min(this.drive.velocity, car.speed * 3.6);
-          car.z = s.distance + 12;
+          car.z = s.distance + (car.direction === -1 ? -12 : 12);
         } else {
           this.finish('traffic');
           return;
@@ -1221,12 +1251,17 @@ export class RaceEngine {
           const fresh = createMotion(
             this.traffic.indexOf(car),
             this.trafficRandom,
+            0,
+            this.course.config.lanes ? this.course.laneCenters : undefined,
           );
-          fresh.z = fresh.merge
-            ? Math.ceil((s.distance + 650 - 180) / 500) * 500 + 180
-            : fresh.kind === 'motorcycle'
-              ? s.distance - 160
-              : s.distance + 680 + this.trafficRandom() * 100;
+          fresh.z =
+            fresh.direction === -1
+              ? s.distance + 700
+              : fresh.merge
+                ? Math.ceil((s.distance + 650 - 180) / 500) * 500 + 180
+                : fresh.kind === 'motorcycle'
+                  ? s.distance - 160
+                  : s.distance + 680 + this.trafficRandom() * 100;
           Object.assign(car, fresh);
         } else {
           car.z = s.distance + 680;
@@ -1313,7 +1348,7 @@ export class RaceEngine {
           : 0;
       c.mesh.rotation.set(
         p.pitch,
-        p.heading - turning * 0.13,
+        p.heading - turning * 0.13 + (c.direction === -1 ? Math.PI : 0),
         c.kind === 'motorcycle' ? -turning * 0.18 : 0,
         'YXZ',
       );
@@ -1371,7 +1406,7 @@ export class RaceEngine {
     desired.addScaledVector(f.right, ready ? 6 : 0);
     desired.y += ready ? 2.3 : hood ? 1.35 : 5.2;
     if (ready) {
-      const radius = this.vehicle.length * (narrow ? 2.3 : 1.55);
+      const radius = this.vehicle.length * (narrow ? 2.7 : 1.55);
       desired.set(
         Math.sin(this.showroomYaw) * radius,
         1.1 + radius * Math.sin(this.showroomPitch),
@@ -1385,7 +1420,7 @@ export class RaceEngine {
           s.distance + (s.selector === 'R' ? -8 : 8),
           this.x * 0.9,
         ).position;
-    target.y += ready ? this.vehicle.height * 0.55 : 1;
+    target.y += ready ? this.vehicle.height * 0.55 - (narrow ? 1.6 : 1.15) : 1;
     this.camera.lookAt(target);
     this.camera.fov = T.MathUtils.damp(
       this.camera.fov,
@@ -1438,6 +1473,10 @@ export class RaceEngine {
         speed: String(Math.round(s.speed)),
         loaded: String(s.loaded),
         camera: String(s.camera),
+        lanes: String(this.course.laneCount),
+        regionalLoaded: String(
+          this.world.regional?.root.userData.loaded === true,
+        ),
         route: s.route,
         distance: String(Math.round(s.distance)),
         offset: String(this.x.toFixed(2)),

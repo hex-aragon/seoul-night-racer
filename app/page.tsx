@@ -471,9 +471,9 @@ export default function Home() {
         hud.mode === 'ready' && (
           <button
             style={{ position: 'absolute', top: 80, right: 20, zIndex: 100 }}
-            onClick={() => engine.current?.previewCrossing()}
+            onClick={() => engine.current?.previewRoad()}
           >
-            신호등 테스트
+            도로 미리보기
           </button>
         )}
       {hud.mode === 'racing' && (
@@ -504,19 +504,6 @@ export default function Home() {
               <Settings2 size={19} />
             </button>
           </nav>
-          {hud.signal && (
-            <div className={'signal-pill ' + hud.signal.phase} role="status">
-              <i />
-              {hud.signal.phase === 'red'
-                ? '정지'
-                : hud.signal.phase === 'amber'
-                  ? '감속'
-                  : '진행'}{' '}
-              <span>
-                {hud.signal.distance}m · {hud.signal.remaining}초
-              </span>
-            </div>
-          )}
           <section className="minimal-controls" aria-label="운전 조작부">
             <div className="minimal-steering">
               <button aria-label="왼쪽 조향" {...pedal('arrowleft')}>
@@ -731,7 +718,7 @@ export default function Home() {
           </div>
           <section className="trip-tray" aria-label="드라이빙 코스 선택">
             <div className="trip-heading">
-              <h2>어디로 떠날까요?</h2>
+              <h2>오늘은 어디로 떠날까요?</h2>
               <label>
                 전체 코스
                 <select
@@ -747,15 +734,21 @@ export default function Home() {
                 </select>
               </label>
             </div>
+            <p className="trip-description">
+              서울부터 바닷마을까지 · 24개의 길을 천천히 둘러보세요
+            </p>
             <div className="trip-bottom">
-              <div className="destination-rail" aria-label="추천 명소 슬라이드">
+              <div
+                className="destination-rail"
+                aria-label="지역별 드라이브 맵 목록"
+              >
                 {(course.config.featured
                   ? ROUTES.filter((r) => r.featured)
                   : [course.config, ...ROUTES.filter((r) => r.featured)]
                 ).map((r) => (
                   <button
                     key={r.id}
-                    className="destination-card"
+                    className={`destination-card theme-${r.theme || 'city'}`}
                     aria-pressed={hud.route === r.id}
                     onClick={() => select(r.id)}
                   >
@@ -764,7 +757,8 @@ export default function Home() {
                       <strong>{r.name}</strong>
                       <small>
                         {(getCourse(r.id).length / 1000).toFixed(1)} km ·{' '}
-                        {r.district || '서울'}
+                        {r.district || '서울'} ·{' '}
+                        {r.lanes ? `왕복 ${r.lanes}차선` : '넓은 도로'}
                       </small>
                     </div>
                   </button>
@@ -782,11 +776,11 @@ export default function Home() {
           </section>
           <a
             className="showroom-credit"
-            href={`${import.meta.env.BASE_URL}models/ATTRIBUTION.md`}
+            href={`${import.meta.env.BASE_URL}maps/ATTRIBUTION.md`}
             target="_blank"
             rel="noreferrer"
           >
-            3D 모델 · 제작자 및 라이선스
+            © OpenStreetMap · 지도 / 모델 출처
           </a>
         </div>
       )}

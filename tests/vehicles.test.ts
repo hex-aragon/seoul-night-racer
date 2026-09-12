@@ -47,12 +47,19 @@ test('EV remains single speed, rejects paddle shifting and regenerates stronger 
   stepDrive(other, false, false, 1);
   assert(d.velocity < other.velocity);
 });
-test('ten featured destinations include Incheon, East Sea and Busan with varied scenarios', () => {
+test('24 featured destinations cover Korean regions with varied road widths', () => {
   const routes = ROUTES.filter((r) => r.featured);
-  assert.equal(routes.length, 10);
-  for (const id of ['incheon-coast', 'east-coast', 'busan-coast'])
+  assert.equal(routes.length, 24);
+  for (const id of [
+    'incheon-songdo',
+    'gangwon-jeongdongjin',
+    'busan-dalmaji',
+    'jeolla-damyang',
+    'gapyeong-cheongpyeong',
+    'seoul-bukak',
+  ])
     assert(routes.some((r) => r.id === id));
-  assert.equal(new Set(routes.map((r) => r.trafficPreset)).size, 3);
+  assert.equal(new Set(routes.map((r) => r.lanes)).size, 3);
 });
 test('traffic includes dump trucks, compact cars, cargo trucks and buses with full wheelsets', () => {
   const motions = Array.from({ length: 16 }, (_, i) =>

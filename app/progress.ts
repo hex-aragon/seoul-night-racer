@@ -39,6 +39,7 @@ export type Profile = {
     cruise: boolean;
     controlsVersion: 2;
     racingVersion: 8;
+    healingVersion?: 1;
   };
 };
 export const blankProfile = (): Profile => ({
@@ -55,10 +56,11 @@ export const blankProfile = (): Profile => ({
     color: '#f31931',
     vehicle: 'ferrari',
     traffic: 'route',
-    route: 'incheon-coast',
+    route: 'gapyeong-cheongpyeong',
     transmission: 'auto',
     daylight: true,
-    peaceful: false,
+    peaceful: true,
+    healingVersion: 1,
     cruise: false,
     controlsVersion: 2,
     racingVersion: 8,
@@ -114,7 +116,7 @@ export function parseProfile(raw: string | null): Profile {
       d.settings?.transmission === 'manual' ? 'manual' : 'auto';
     p.settings.daylight = d.settings?.daylight !== false;
     p.settings.peaceful =
-      d.settings?.racingVersion === 8 && d.settings?.peaceful === true;
+      d.settings?.healingVersion !== 1 || d.settings?.peaceful !== false;
     p.settings.cruise =
       d.settings?.controlsVersion === 2 && d.settings?.cruise === true;
     return p;
