@@ -361,10 +361,8 @@ export default function Home() {
       <details>
         <summary>시점 · 변속 · 조작 방법</summary>
         <p>
-          운전점수 100점 시작 · 결승에서 80점 이상 합격. 과속 2초마다
-          −2점(20km/h 초과 시 −4점), 적색 신호 위반 −15점, 깜빡이 없이 차선 변경
-          −5점. 변경 1초 전에 Z(좌) / X(우) 또는 깜빡이 버튼을 누르세요. 화면
-          제한속도는 게임 규칙입니다.
+          좌우 화살표로 조향하고 W/↑로 가속, S/↓로 제동합니다. 결승에 도착하면
+          완주입니다.
         </p>
         <p>
           {electric ? '배터리' : '연료'} {hud.fuel.toFixed(1)}% · 게임 주행량
@@ -519,255 +517,36 @@ export default function Home() {
               </span>
             </div>
           )}
-          {!profile.settings.peaceful && (
-            <div className="race-ribbon">
-              <b className={hud.timeLeft < 20 ? 'urgent' : ''}>
-                {Math.max(0, Math.ceil(hud.timeLeft))}s
-              </b>
-              <span>
-                {hud.drift
-                  ? 'DRIFT'
-                  : `회피 ${hud.dodged} · 추월 ${hud.passed}`}{' '}
-                <small>×{hud.combo}</small>
-              </span>
-              <strong>{hud.warning || '체크포인트를 향해 달리세요'}</strong>
-            </div>
-          )}
-          <div
-            className={
-              'driving-assessment ' + (hud.drivingScore < 80 ? 'at-risk' : '')
-            }
-            aria-label="운전점수와 제한속도"
-          >
-            <strong>
-              {hud.drivingScore}
-              <small> / 100</small>
-            </strong>
-            <span>합격 80점</span>
-            <b className={hud.speed > hud.speedLimit + 3 ? 'overspeed' : ''}>
-              {hud.speedLimit}
-            </b>
-            <span>제한 km/h</span>
-          </div>
-          <section className="driver-dash" aria-label="운전 조작부">
-            <div className="driver-wheel">
-              <div
-                className="steering-wheel steering-feedback"
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 160 160"
-                  style={{ transform: `rotate(${hud.steering * 110}deg)` }}
-                  aria-hidden="true"
-                >
-                  <circle cx="80" cy="80" r="63" />
-                  <path d="M20 70 L65 80 M140 70 L95 80 M80 96 L80 143" />
-                  <circle className="wheel-hub" cx="80" cy="80" r="24" />
-                  <path className="wheel-mark" d="M80 12 L80 27" />
-                </svg>
-              </div>
-              <span>
-                좌우 조향 <small>← / →</small>
-              </span>
-              <div className="steer-buttons">
-                <button aria-label="왼쪽 조향" {...pedal('arrowleft')}>
-                  ◀
-                </button>
-                <button aria-label="오른쪽 조향" {...pedal('arrowright')}>
-                  ▶
-                </button>
-              </div>
-              <button
-                className="drift-button"
-                data-active={hud.drift}
-                {...pedal(' ')}
-              >
-                드리프트 <small>SPACE</small>
+          <section className="minimal-controls" aria-label="운전 조작부">
+            <div className="minimal-steering">
+              <button aria-label="왼쪽 조향" {...pedal('arrowleft')}>
+                ◀
+              </button>
+              <button aria-label="오른쪽 조향" {...pedal('arrowright')}>
+                ▶
               </button>
             </div>
-            <div className="instrument-cluster">
-              <div className="instrument-main">
-                <div className="driver-speed">
-                  <strong>
-                    {Math.round(hud.speed).toString().padStart(2, '0')}
-                  </strong>
-                  <small>km/h</small>
-                </div>
-                <div className="drive-direction">
-                  <b>
-                    {hud.selector === 'D'
-                      ? electric
-                        ? 'D'
-                        : `D${hud.gear}`
-                      : hud.selector}
-                  </b>
-                  <span>
-                    {hud.selector === 'R'
-                      ? '후진'
-                      : hud.selector === 'P'
-                        ? '주차 잠금'
-                        : hud.selector === 'N'
-                          ? '중립'
-                          : '전진'}{' '}
-                    ·{' '}
-                    {
-                      [
-                        '북 N',
-                        '북동 NE',
-                        '동 E',
-                        '남동 SE',
-                        '남 S',
-                        '남서 SW',
-                        '서 W',
-                        '북서 NW',
-                      ][Math.round(hud.bearing / 45) % 8]
-                    }
-                  </span>
-                </div>
-              </div>
-              <div className="fuel-indicator" data-low={hud.fuel <= 20}>
-                <label>
-                  <span>{electric ? '배터리' : '연료'}</span>
-                  <b>{hud.fuel.toFixed(1)}%</b>
-                </label>
-                <div
-                  role="meter"
-                  aria-label={electric ? '남은 배터리' : '남은 연료'}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={hud.fuel}
-                >
-                  <i style={{ width: `${hud.fuel}%` }} />
-                </div>
-              </div>
-              <div className="turn-indicators" aria-label="방향지시등">
-                <button
-                  aria-label="좌측 깜빡이 Z"
-                  aria-pressed={hud.indicator === -1}
-                  onClick={() => engine.current?.toggleIndicator(-1)}
-                >
-                  ◀ <span>깜빡이 Z</span>
-                </button>
-                <button
-                  aria-label="우측 깜빡이 X"
-                  aria-pressed={hud.indicator === 1}
-                  onClick={() => engine.current?.toggleIndicator(1)}
-                >
-                  <span>깜빡이 X</span> ▶
-                </button>
-              </div>
-              <div className="drive-gear-row">
-                {(['P', 'R', 'N', 'D'] as const).map((g) => (
-                  <button
-                    key={g}
-                    aria-label={
-                      {
-                        P: '주차 잠금 P',
-                        R: '후진 R',
-                        N: '중립 N',
-                        D: '전진 D',
-                      }[g]
-                    }
-                    aria-pressed={hud.selector === g}
-                    disabled={
-                      hud.speed > 1 &&
-                      g !== hud.selector &&
-                      g !== 'N' &&
-                      !(g === 'D' && hud.selector === 'N' && hud.velocity > 0)
-                    }
-                    onClick={() => engine.current?.selectGear(g)}
-                  >
-                    {g}
-                  </button>
-                ))}
-                <button
-                  className="at-mt"
-                  disabled={electric}
-                  aria-label="자동 수동 변속 전환"
-                  onClick={() =>
-                    settings({
-                      transmission:
-                        profile.settings.transmission === 'auto'
-                          ? 'manual'
-                          : 'auto',
-                    })
-                  }
-                >
-                  {electric
-                    ? 'EV'
-                    : profile.settings.transmission === 'auto'
-                      ? 'AT'
-                      : 'MT'}
-                </button>
-              </div>
-              {
-                <div className="dash-shift">
-                  <button
-                    aria-label="기어 내리기"
-                    disabled={electric || hud.selector !== 'D'}
-                    onClick={() => engine.current?.shift(-1)}
-                  >
-                    −
-                  </button>
-                  <span>
-                    {electric
-                      ? '전기 구동 · 회생제동'
-                      : `${hud.transmission === 'auto' ? 'AT 패들' : 'MT'} · ${hud.gear}단`}
-                  </span>
-                  <button
-                    aria-label="기어 올리기"
-                    disabled={electric || hud.selector !== 'D'}
-                    onClick={() => engine.current?.shift(1)}
-                  >
-                    ＋
-                  </button>
-                </div>
-              }
-              {hud.fuel <= 20 ? (
-                <div className="fuel-help" role="status">
-                  <span>
-                    {electric
-                      ? '배터리 부족 · 정차 후 충전'
-                      : hud.fuel === 0
-                        ? '연료 소진 · 정차 후 주유'
-                        : '연료 부족'}
-                  </span>
-                  <button
-                    disabled={hud.speed > 1}
-                    onClick={() => engine.current?.refuel()}
-                  >
-                    {electric ? '충전' : '주유'}
-                  </button>
-                </div>
-              ) : (
-                <small className="driver-hint">
-                  {hud.notice ||
-                    (profile.settings.cruise
-                      ? '정속 주행 켜짐'
-                      : hud.speed > 1
-                        ? '방향 전환은 정차 후'
-                        : '액셀을 밟아 출발하세요')}
-                </small>
-              )}
+            <div
+              className="minimal-speed"
+              aria-label={`속도 ${Math.round(hud.speed)} 킬로미터 매시`}
+            >
+              <strong>{Math.round(hud.speed)}</strong>
+              <small>km/h</small>
             </div>
-            <div className="pedals driver-pedals">
+            <div className="minimal-pedals">
               <button
-                className="brake-pedal"
+                aria-label="브레이크"
                 data-pressed={hud.braking}
                 {...pedal('arrowdown')}
               >
-                <i />
-                <strong>브레이크</strong>
-                <small>S / ↓</small>
+                브레이크
               </button>
               <button
-                className="gas-pedal"
+                aria-label="악셀"
                 data-pressed={hud.throttle && !hud.braking}
                 {...pedal('arrowup')}
               >
-                <i />
-                <strong>액셀</strong>
-                <small>W / ↑</small>
+                악셀
               </button>
             </div>
           </section>
@@ -1065,43 +844,24 @@ export default function Home() {
           <section className="result">
             <span className="eyebrow">
               {hud.endReason === 'finish'
-                ? 'DRIVING TEST · PASS'
-                : hud.endReason === 'low-score'
-                  ? 'DRIVING TEST · FAIL'
-                  : 'CRASH / GAME OVER'}
+                ? 'DRIVE COMPLETE'
+                : 'CRASH / GAME OVER'}
             </span>
             <h2>
               {hud.endReason === 'finish'
-                ? '운전 평가에 합격했습니다.'
-                : hud.endReason === 'low-score'
-                  ? '운전점수 미달 · 불합격'
-                  : hud.endReason === 'traffic'
-                    ? '차량과 충돌했습니다.'
-                    : hud.endReason === 'timeout'
-                      ? '제한 시간이 끝났습니다.'
-                      : hud.endReason === 'obstacle'
-                        ? '방호벽에 충돌했습니다.'
-                        : '가드레일과 충돌했습니다.'}
+                ? '드라이브를 완주했습니다.'
+                : hud.endReason === 'traffic'
+                  ? '차량과 충돌했습니다.'
+                  : hud.endReason === 'timeout'
+                    ? '제한 시간이 끝났습니다.'
+                    : hud.endReason === 'obstacle'
+                      ? '방호벽에 충돌했습니다.'
+                      : '가드레일과 충돌했습니다.'}
             </h2>
             <p>
               {hud.endReason === 'finish'
                 ? course.config.name
-                : hud.endReason === 'low-score'
-                  ? '결승에 도착했지만 80점 미만입니다. 교통규칙을 지켜 다시 도전하세요.'
-                  : '속도를 줄이고 다음 코너에 다시 도전하세요.'}
-            </p>
-            <div
-              className={
-                'result-driving-score ' +
-                (hud.drivingScore < 80 ? 'at-risk' : '')
-              }
-            >
-              <b>{hud.drivingScore}</b> / 100점 · 합격 기준 80점
-            </div>
-            <p className="deduction-summary">
-              과속 −{hud.violations.speeding} · 신호 위반{' '}
-              {hud.violations.redLights}회 · 깜빡이 미사용{' '}
-              {hud.violations.unsignalled}회
+                : '속도를 줄이고 다음 코너에 다시 도전하세요.'}
             </p>
             <div className="finish-stars">
               {'★'.repeat(reward?.stars || 0)}

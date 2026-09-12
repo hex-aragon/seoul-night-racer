@@ -32,7 +32,7 @@ In racing mode, a vehicle, guardrail or roadblock collision ends the run. Cones 
 
 XP, levels, best times, route stars, discovered landmarks, achievements, paint, transmission and audio settings are stored in `localStorage` under `seoul-midnight-run.profile.v1`. No account or server is needed. Storage is specific to this browser and origin; clearing site data removes it. If storage is unavailable, a visible warning explains that only the current session is retained.
 
-Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Driving grades of 98/90/80 award three/two/one stars on completion. A slower or crashed run never replaces a better record.
+Finished and crashed runs award earned XP once. Abandoning a run through the pause menu does not award XP. Completion records and the original time-based stars remain in the results and settings. A slower or crashed run never replaces a better record.
 
 ## Audio and models
 
@@ -98,8 +98,8 @@ All 133 fictional routes have crossings, placed outside bridge decks, work zones
 
 Browser verification uses the development-only `?qa` crossing preview button; it is stripped from production. Rebuild the original kit with `/Applications/Blender.app/Contents/MacOS/Blender --background --python art/build_street.py` on macOS (or your Blender executable on other platforms).
 
-## Driving assessment
+## Minimal driving interface
 
-Every drive starts in the distant chase camera with 100 driving points. Reaching the finish with at least 80 passes; lower scores fail and do not earn completion stars or a best time. Grades and attempt records persist locally. Z/X or the amber arrow buttons toggle left/right indicators; activate at least one second before crossing a lane boundary. They cancel after the lane change. Unsignalled lane changes cost 5 points, crossing a red stop line costs 15 once per crossing, and continuous speeding costs 2 points per 2 seconds (4 when more than 20 km/h over). A 3 km/h tolerance avoids rounding penalties. Game speed limits are shown on road signs and the HUD: 80 on waterfront routes, 50 on mountain/forest routes, 60 in cities, 40 in works. These are fictional game rules. Time budgets allow compliant driving and signal waits.
+Driving grades, deductions and the 80-point finish requirement have been removed. Crossing the finish completes the route. The bottom bar contains only left/right steering, brake, accelerator and speed. Camera/settings remain at the top. Backdrop blur, grain, fog and speed streaks are disabled; the chase camera aims closer to the car to keep the body above the controls. Fuel, refuelling and transmission options remain accessible in settings.
 
 Toyota is removed; previously saved Toyota selection falls back to Ferrari. Kia now uses the actual Stinger model. The Genesis slot retains the attributed Genesis Coupe Custom model; a G80 replacement and Lincoln MKZ replacement are pending authorized asset downloads. The Lincoln slot still accurately identifies its Continental Mark V model.

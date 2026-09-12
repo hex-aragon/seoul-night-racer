@@ -1,11 +1,4 @@
-import {
-  newAssessment,
-  assessDriving,
-  roadSpeedLimit,
-  passedDriving,
-  type Indicator,
-  type Assessment,
-} from './driving-score';
+import { roadSpeedLimit, type Indicator } from './road-rules';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { signalAt, type SignalPhase } from './signals';
 import { getVehicle } from './vehicles';
@@ -75,22 +68,11 @@ export type Snapshot = {
   length: number;
   nearMisses: number;
   combo: number;
-  score: number;
-  drivingScore: number;
-  speedLimit: number;
   indicator: Indicator;
-  violations: { speeding: number; redLights: number; unsignalled: number };
   maxSpeed: number;
   landmarks: string[];
   notice: string;
-  endReason:
-    | 'finish'
-    | 'traffic'
-    | 'barrier'
-    | 'obstacle'
-    | 'timeout'
-    | 'low-score'
-    | '';
+  endReason: 'finish' | 'traffic' | 'barrier' | 'obstacle' | 'timeout' | '';
   offset: number;
   curve: number;
 };
@@ -126,11 +108,7 @@ export const initial = (route: RouteId = 'hangang'): Snapshot => ({
   length: getCourse(route).length,
   nearMisses: 0,
   combo: 1,
-  score: 0,
-  drivingScore: 100,
-  speedLimit: roadSpeedLimit(getCourse(route), 0),
   indicator: 0,
-  violations: { speeding: 0, redLights: 0, unsignalled: 0 },
   maxSpeed: 0,
   landmarks: [],
   notice: '',
@@ -153,15 +131,10 @@ type Traffic = TrafficMotion & {
 };
 export class RaceEngine {
   state = initial();
-  private assessment: Assessment = newAssessment();
-  private indicatorSince = 0;
-  private indicatorCancelAt = Infinity;
   private playerIndicators = new T.Group();
   toggleIndicator = (side: Indicator) => {
     if (this.state.mode !== 'racing') return;
     this.state.indicator = this.state.indicator === side ? 0 : side;
-    this.indicatorSince = this.state.time;
-    this.indicatorCancelAt = Infinity;
     this.update({ ...this.state });
   };
   keys = new Set<string>();
@@ -291,7 +264,7 @@ export class RaceEngine {
         ? this.daylightEnvironment.texture
         : this.environment.texture;
     this.scene.backgroundIntensity = 0.6;
-    this.scene.fog = new T.FogExp2(sky, daylight ? 0.0015 : 0.0032);
+    this.scene.fog = null;
     this.scene.environmentIntensity = daylight ? 0.4 : 0.42;
     this.scene.children.forEach((o) => {
       if (o instanceof T.HemisphereLight) {
@@ -386,11 +359,11 @@ export class RaceEngine {
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     this.renderer.toneMapping = T.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.85;
     this.scene.background = new T.Color(this.course.config.sky);
-    this.scene.fog = new T.FogExp2(this.course.config.sky, 0.0032);
+    this.scene.fog = null;
     const pmrem = new T.PMREMGenerator(this.renderer),
       room = new RoomEnvironment();
     this.environment = pmrem.fromScene(room, 0.04);
@@ -678,7 +651,7 @@ export class RaceEngine {
     this.scene.add(this.world.root);
     this.buildHazards();
     this.scene.background = new T.Color(this.course.config.sky);
-    this.scene.fog = new T.FogExp2(this.course.config.sky, 0.0032);
+    this.scene.fog = null;
     this.state = { ...initial(route), loaded, error };
     this.configureExperience(this.daylight, this.peaceful, this.cruise);
     this.x = 0;
@@ -890,9 +863,6 @@ export class RaceEngine {
   start = () => {
     if (!this.state.loaded || this.state.error) return;
     const { route } = this.state;
-    this.assessment = newAssessment();
-    this.indicatorSince = 0;
-    this.indicatorCancelAt = Infinity;
     const transmission = this.drive.transmission;
     this.drive = { ...newDrive(), transmission };
     this.furthest = 0;
@@ -971,7 +941,7 @@ export class RaceEngine {
     this.camera.position
       .copy(f.position)
       .addScaledVector(f.tangent, this.state.camera ? 1.6 : -12);
-    this.camera.position.y += this.state.camera ? 1.35 : 4.6;
+    this.camera.position.y += this.state.camera ? 1.35 : 5.2;
   }
   private keydown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -1017,12 +987,10 @@ export class RaceEngine {
     if (this.state.mode !== 'racing') return;
     const s = this.state;
     s.mode = 'finished';
-    if (reason === 'finish' && !passedDriving(s.drivingScore))
-      reason = 'low-score';
     s.endReason = reason;
     s.speed = 0;
     s.boost = false;
-    if (reason !== 'finish' && reason !== 'timeout' && reason !== 'low-score') {
+    if (reason !== 'finish' && reason !== 'timeout') {
       s.health = 0;
       this.hit = 1;
       this.audio.crash();
@@ -1031,8 +999,7 @@ export class RaceEngine {
     this.steeringInput = 0;
     this.onEnd({
       route: s.route,
-      completed: reason === 'finish' && passedDriving(s.drivingScore),
-      drivingScore: s.drivingScore,
+      completed: reason === 'finish',
       distance: Math.max(s.distance, this.furthest),
       time: s.time,
       passed: this.peaceful ? 0 : s.passed,
@@ -1085,7 +1052,6 @@ export class RaceEngine {
     if (s.drift) {
       this.drive.velocity *= Math.exp(-0.18 * dt);
       s.driftSeconds += dt;
-      s.score += Math.round(70 * dt);
     }
     const lateralTarget =
       this.steer *
@@ -1125,41 +1091,6 @@ export class RaceEngine {
       this.drive.velocity = 0;
       s.velocity = 0;
       s.speed = 0;
-    }
-    this.assessment ??= newAssessment();
-    s.speedLimit = roadSpeedLimit(
-      this.course,
-      s.distance,
-      this.scenario === 'works',
-    );
-    const changed = assessDriving(this.assessment, {
-      dt,
-      time: s.time,
-      previousDistance,
-      distance: s.distance,
-      x: this.x,
-      speed: s.speed,
-      limit: s.speedLimit,
-      length: this.vehicle.length,
-      indicator: s.indicator,
-      indicatorAge: s.time - (this.indicatorSince || 0),
-      crossings: this.world?.street.crossings || [],
-    });
-    if (changed && s.indicator === changed)
-      this.indicatorCancelAt = s.time + 1.2;
-    if (s.time >= this.indicatorCancelAt) {
-      s.indicator = 0;
-      this.indicatorCancelAt = Infinity;
-    }
-    s.drivingScore = this.assessment.score;
-    s.violations = {
-      speeding: this.assessment.speeding,
-      redLights: this.assessment.redLights,
-      unsignalled: this.assessment.unsignalled,
-    };
-    if (this.assessment.lastDeduction) {
-      s.notice = this.assessment.lastDeduction;
-      this.noticeUntil = s.time + 2.5;
     }
     this.furthest = Math.max(this.furthest, s.distance);
     s.warning = '';
@@ -1223,7 +1154,7 @@ export class RaceEngine {
           h.passed = true;
           s.dodged++;
           s.combo = Math.min(5, s.combo + 1);
-          s.score += 150 * s.combo;
+
           s.timeLeft += 1;
         }
       }
@@ -1271,11 +1202,10 @@ export class RaceEngine {
         if (gap < 3.2) {
           s.nearMisses++;
           s.combo = Math.min(5, s.combo + 1);
-          s.score += 150 * s.combo;
+
           s.notice = `NEAR MISS  ×${s.combo}`;
           this.noticeUntil = s.time + 2.2;
         } else {
-          s.score += 50;
           s.combo = 1;
         }
       }
@@ -1311,8 +1241,8 @@ export class RaceEngine {
         !s.landmarks.includes(landmark.id)
       ) {
         s.landmarks = [...s.landmarks, landmark.id];
-        s.score += 300;
-        s.notice = `${landmark.name}  +300`;
+
+        s.notice = landmark.name;
         this.noticeUntil = s.time + 3;
       }
     }
@@ -1343,10 +1273,6 @@ export class RaceEngine {
     if (ready) {
       this.scene.background = new T.Color('#d6dfe6');
       this.scene.environment = this.environment.texture;
-      if (this.scene.fog instanceof T.FogExp2) {
-        this.scene.fog.color.set('#d6dfe6');
-        this.scene.fog.density = 0.009;
-      }
       this.scene.environmentIntensity = 0.8;
     } else if (this.studioWasReady)
       this.configureExperience(this.daylight, this.peaceful, this.cruise);
@@ -1443,7 +1369,7 @@ export class RaceEngine {
               : -12,
       );
     desired.addScaledVector(f.right, ready ? 6 : 0);
-    desired.y += ready ? 2.3 : hood ? 1.35 : 4.6;
+    desired.y += ready ? 2.3 : hood ? 1.35 : 5.2;
     if (ready) {
       const radius = this.vehicle.length * (narrow ? 2.3 : 1.55);
       desired.set(
@@ -1456,7 +1382,7 @@ export class RaceEngine {
     const target = ready
       ? f.position.clone()
       : this.course.sample(
-          s.distance + (s.selector === 'R' ? -25 : 25),
+          s.distance + (s.selector === 'R' ? -8 : 8),
           this.x * 0.9,
         ).position;
     target.y += ready ? this.vehicle.height * 0.55 : 1;
@@ -1471,7 +1397,7 @@ export class RaceEngine {
     if (this.hit > 0)
       this.camera.position.x += Math.sin(t * 0.08) * this.hit * 0.09;
     const lineMat = this.speedLines.material as T.LineBasicMaterial;
-    lineMat.opacity = s.boost ? 0.3 : s.speed > 220 ? 0.07 : 0;
+    lineMat.opacity = 0;
     if (lineMat.opacity > 0) {
       for (let i = 0; i < 60; i++) {
         const p = f.position
@@ -1504,9 +1430,7 @@ export class RaceEngine {
       this.ui = t;
       Object.assign(this.canvas.dataset, {
         streetLoaded: String(!!this.world.street.root.userData.loaded),
-        drivingScore: String(s.drivingScore),
         indicator: String(s.indicator),
-        speedLimit: String(s.speedLimit),
         signal: s.signal?.phase || 'none',
         mode: s.mode,
         vehicle: this.vehicleId,

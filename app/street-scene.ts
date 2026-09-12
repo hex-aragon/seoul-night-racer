@@ -1,4 +1,4 @@
-import { roadSpeedLimit } from './driving-score';
+import { roadSpeedLimit } from './road-rules';
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Course } from './routes';

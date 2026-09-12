@@ -369,28 +369,11 @@ test('red-light waiting freezes the race countdown and pause freezes the signal 
   assert.ok(e.state.timeLeft < 60);
 });
 
-test('finish assessment passes at 80 and fails at 79 without crash or completion rewards', () => {
+test('finish succeeds without a driving grade requirement', () => {
+  const { e, endings } = fixture();
+  e.state.drivingScore = 0;
+  e.finish('finish');
+  assert.equal(endings[0].completed, true);
+  assert.equal(e.state.endReason, 'finish');
   assert.equal(initial().camera, 0);
-  for (const score of [79, 80]) {
-    const { e, endings } = fixture();
-    e.state.drivingScore = score;
-    e.audio.crash = () => assert.fail('grade failure is not a crash');
-    e.finish('finish');
-    e.finish('finish');
-    assert.equal(endings.length, 1);
-    assert.equal(endings[0].completed, score >= 80);
-    assert.equal(e.state.endReason, score >= 80 ? 'finish' : 'low-score');
-    const awarded = awardRun(
-      blankProfile(),
-      { ...result, drivingScore: score },
-      75,
-    );
-    assert.equal(
-      awarded.profile.records.hangang?.finishes,
-      score >= 80 ? 1 : 0,
-    );
-    assert.equal(awarded.stars, score >= 80 ? 1 : 0);
-    const restored = parseProfile(JSON.stringify(awarded.profile));
-    assert.equal(restored.records.hangang?.lastDrivingScore, score);
-  }
 });

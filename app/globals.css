@@ -3001,115 +3001,25 @@ input:focus-visible {
 
 @media(max-width:700px){.game-shell:has(.race-ribbon) .signal-pill{top:115px}}
 
-.driving-assessment {
-  position: absolute;
-  top: 80px;
-  left: 25px;
-  z-index: 15;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  background: #152b34e8;
-  color: #eaf4ed;
-  padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 10px;
+
+/* Clear driving view: four controls, one speed reading, open vehicle silhouette. */
+.game-shell * { backdrop-filter: none; }
+.game-shell .grain { display: none; }
+.minimal-controls { position:absolute; z-index:15; bottom:max(18px, env(safe-area-inset-bottom)); left:24px; right:24px; display:flex; align-items:flex-end; justify-content:space-between; pointer-events:none; color:#fff; }
+.minimal-steering,.minimal-pedals { display:flex; gap:12px; pointer-events:auto; }
+.minimal-controls button { width:82px; height:76px; border:1px solid #b6d1df99; border-radius:16px; background:#142936e8; color:#f5fafc; font-size:23px; font-weight:700; touch-action:none; user-select:none; }
+.minimal-pedals button { width:96px; font-size:15px; }
+.minimal-controls button:active,.minimal-controls button[data-pressed='true'] { background:#507d91; border-color:#e3faff; }
+.minimal-speed { display:flex; align-items:baseline; gap:6px; text-shadow:0 2px 4px #000; font-variant-numeric:tabular-nums; }
+.minimal-speed strong { font-size:46px; font-weight:500; line-height:1; }
+.minimal-speed small { font-size:12px; }
+@media(max-width:700px) {
+ .minimal-controls { left:10px; right:10px; bottom:max(12px,env(safe-area-inset-bottom)); }
+ .minimal-steering,.minimal-pedals { gap:6px; }
+ .minimal-controls button { width:52px; height:62px; font-size:22px; border-radius:12px; }
+ .minimal-pedals button { width:60px; font-size:12px; }
+ .minimal-speed { gap:3px; flex-direction:column; align-items:center; }
+ .minimal-speed strong { font-size:32px; }
+ .minimal-speed small { font-size:10px; }
 }
-.driving-assessment strong {
-  font-size: 24px;
-  color: #b9ecc8;
-}
-.driving-assessment strong small {
-  font-size: 10px;
-  font-weight: 400;
-}
-.driving-assessment > b {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 4px solid #d64e4e;
-  border-radius: 50%;
-  background: #fff;
-  color: #1b252e;
-  font-size: 15px;
-  margin-left: 8px;
-}
-.driving-assessment > b.overspeed {
-  background: #ffd3c7;
-}
-.driving-assessment.at-risk strong {
-  color: #ff947c;
-}
-.turn-indicators {
-  display: flex;
-  gap: 8px;
-  margin: 6px 0;
-}
-.turn-indicators button {
-  flex: 1;
-  background: #1e3947;
-  color: #d6e2e5;
-  border: 1px solid #6c869280;
-  border-radius: 6px;
-  padding: 6px;
-  font-size: 16px;
-}
-.turn-indicators span {
-  font-size: 10px;
-}
-.turn-indicators button[aria-pressed='true'] {
-  color: #ffc76e;
-  background: #59462b;
-  animation: indicatorPulse 0.8s steps(2, end) infinite;
-}
-.result-driving-score {
-  margin: 12px 0;
-  font-size: 15px;
-  color: #b6e6c6;
-}
-.result-driving-score b {
-  font-size: 46px;
-}
-.result-driving-score.at-risk {
-  color: #ff977d;
-}
-.deduction-summary {
-  font-size: 12px !important;
-}
-@keyframes indicatorPulse {
-  50% {
-    opacity: 0.5;
-  }
-}
-@media (max-width: 700px) {
-  .driving-assessment {
-    top: 112px;
-    left: 12px;
-    padding: 5px 8px;
-    gap: 5px;
-  }
-  .driving-assessment strong {
-    font-size: 19px;
-  }
-  .driving-assessment > b {
-    width: 29px;
-    height: 29px;
-    font-size: 12px;
-  }
-  .game-shell:has(.driving-assessment) .signal-pill {
-    top: 168px;
-  }
-  .turn-indicators {
-    gap: 5px;
-  }
-  .turn-indicators button {
-    padding: 5px 2px;
-  }
-  .turn-indicators span {
-    font-size: 8px;
-  }
-  .driver-dash {
-    padding-top: 10px;
-  }
-}
+@media(max-height:500px) { .minimal-controls button { height:48px; } .minimal-speed strong { font-size:30px; } }
