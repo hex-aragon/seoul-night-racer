@@ -89,6 +89,7 @@ export class StreetScene {
       }
       for (let z = 140; z < this.course.length; z += 850) {
         const stop = this.place(z, -(this.course.roadHalfWidth + 4));
+        if (this.course.config.mapSource) stop.position.y -= 0.75;
         stop.add(shelter.scene.clone(true));
       }
       const positions: { z: number; x: number }[] = [];
@@ -142,6 +143,7 @@ export class StreetScene {
           positions.forEach((p, i) => {
             const frame = this.course.sample(p.z, p.x);
             transform.position.copy(frame.position);
+            if (this.course.config.mapSource) transform.position.y -= 0.85;
             transform.rotation.set(0, i * 2.399, 0);
             transform.scale.setScalar(0.9 + (i % 5) * 0.1);
             transform.updateMatrix();

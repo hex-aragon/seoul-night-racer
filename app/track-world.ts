@@ -276,6 +276,11 @@ export class TrackWorld {
       ),
       g = new T.Group();
     g.position.copy(f.position);
+    if (
+      this.course.config.mapSource &&
+      Math.abs(lateral) > this.course.roadHalfWidth + 3
+    )
+      g.position.y -= 0.75;
     g.rotation.set(f.pitch, f.heading, 0, 'YXZ');
     this.block(s).add(g);
     return g;

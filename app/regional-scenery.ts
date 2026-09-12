@@ -75,6 +75,7 @@ export class RegionalScenery {
           );
         const cluster = assets[i % assets.length].clone(true);
         cluster.position.copy(frame.position);
+        cluster.position.y -= 0.75;
         cluster.rotation.y =
           frame.heading + (side > 0 ? -Math.PI / 2 : Math.PI / 2);
         this.root.add(cluster);
